@@ -1,0 +1,12 @@
+=== NASA PCoE BATTERY DATASET GUIDE ===
+
+Official Download Portal: https://www.nasa.gov/content/prognostics-center-of-excellence-data-set-repository
+Direct Download Link: https://ti.arc.nasa.gov/c3/ti/research/prognostic-senti/battery-data-set/
+
+Expected Files:
+- B0005.mat
+- B0006.mat
+- B0007.mat
+- B0018.mat
+
+Place these .mat files directly in this directory (data/NASA/).
