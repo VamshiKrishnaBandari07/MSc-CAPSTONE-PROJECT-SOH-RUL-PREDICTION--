@@ -85,6 +85,7 @@ We evaluated the performance of our optimized framework against the paper's orig
 ├── requirements.txt   # Python package dependencies
 ├── preprocess.py      # SG smoothing, dQ/dV, dV/dQ, dI/dV extraction, NASA/Oxford/CALCE simulators
 ├── preprocess_paper.py # Paper-aligned preprocessing & synthetic data
+├── paper_exp/         # Full paper reproduction experiment package
 ├── model.py           # PyTorch implementation of the 1D-CNN + TCN + LSTM + Attention model
 ├── model_paper.py     # Exact paper reproduction (SOH-only head)
 ├── train.py           # Physics-informed multi-task training loop & cross-validation
@@ -184,3 +185,16 @@ python benchmark.py
 ```bash
 python train_paper.py
 ```
+
+### 5. Run the full paper experiment package
+The `paper_exp/` folder adds the paper-aligned DV/DC/ICA pipeline, ~0.35M-parameter
+CNN-TCN-LSTM-Attention SOH model, 5-fold cross-validation, metrics, latency, energy,
+and optional attention export in an isolated package:
+
+```bash
+python -m paper_exp.train --smoke   # quick verification
+python -m paper_exp.train           # full paper-aligned run
+```
+
+See `paper_exp/README.md` for the expected `data/processed/*_paper_exp.npz`
+format and the synthetic fallback behavior when raw public datasets are unavailable.
