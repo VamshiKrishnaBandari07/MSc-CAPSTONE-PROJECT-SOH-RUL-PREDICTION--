@@ -3,6 +3,7 @@ import json
 import os
 import random
 import time
+from contextlib import nullcontext
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
@@ -128,7 +129,8 @@ def train_one_fold(
         factor=args.scheduler_factor,
         patience=args.scheduler_patience,
     )
-    scaler = torch.cuda.amp.GradScaler(enabled=args.mixed_precision and device.type == "cuda")
+    use_amp = args.mixed_precision and device.type == "cuda"
+    scaler = torch.amp.GradScaler("cuda", enabled=True) if use_amp else None
 
     best_state = deepcopy(model.state_dict())
     best_rmse = float("inf")
@@ -144,12 +146,18 @@ def train_one_fold(
             soh = soh.to(device)
 
             optimizer.zero_grad(set_to_none=True)
-            with torch.cuda.amp.autocast(enabled=args.mixed_precision and device.type == "cuda"):
+            amp_context = torch.amp.autocast("cuda") if use_amp else nullcontext()
+            with amp_context:
                 predictions, _ = model(features)
                 loss = criterion(predictions, soh)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+
+            if use_amp:
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                optimizer.step()
             train_loss += loss.item() * features.size(0)
 
         train_loss /= len(train_indices)

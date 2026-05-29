@@ -3,6 +3,7 @@ from typing import Sequence, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.parametrizations import weight_norm
 
 
 class Chomp1d(nn.Module):
@@ -32,14 +33,14 @@ class TemporalBlock(nn.Module):
         dropout: float,
     ):
         super().__init__()
-        self.conv1 = nn.utils.weight_norm(
+        self.conv1 = weight_norm(
             nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, padding=padding, dilation=dilation)
         )
         self.chomp1 = Chomp1d(padding)
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(dropout)
 
-        self.conv2 = nn.utils.weight_norm(
+        self.conv2 = weight_norm(
             nn.Conv1d(n_outputs, n_outputs, kernel_size, stride=stride, padding=padding, dilation=dilation)
         )
         self.chomp2 = Chomp1d(padding)
