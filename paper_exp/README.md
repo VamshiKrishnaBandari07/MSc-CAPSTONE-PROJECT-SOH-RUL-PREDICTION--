@@ -43,7 +43,7 @@ paper_exp/
 
 ## Dataset input
 
-The paper uses NASA PCoE, Oxford, and CALCE battery degradation datasets. This repo does not ship those raw public datasets.
+The paper uses NASA PCoE, Oxford, and CALCE battery degradation datasets. The user-provided Kaggle dataset is also supported as `KaggleSDG7`: https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7. This repo does not ship those raw public datasets.
 
 Place the raw files downloaded from the paper-mentioned repositories under:
 
@@ -51,13 +51,27 @@ Place the raw files downloaded from the paper-mentioned repositories under:
 data/
 ├── NASA/      # NASA PCoE battery .mat files such as B0005.mat, B0006.mat, ...
 ├── Oxford/    # Oxford Battery Degradation .mat files
-└── CALCE/     # CALCE battery CSV/XLS/XLSX files
+├── CALCE/     # CALCE battery CSV/XLS/XLSX files
+└── KaggleSDG7/ # extracted files from the user-provided Kaggle dataset
 ```
 
-Then convert them into the aligned DV/DC/ICA tensors used by the experiment:
+Then convert NASA/Oxford/CALCE into the aligned DV/DC/ICA tensors used by the experiment:
 
 ```bash
 python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed
+```
+
+Convert the user-provided Kaggle dataset after manually extracting it under `data/KaggleSDG7/`:
+
+```bash
+python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
+python3 -m paper_exp.train --datasets KaggleSDG7 --require-real-data
+```
+
+Or download it through the Kaggle API if credentials are configured (`KAGGLE_USERNAME`/`KAGGLE_KEY` or `~/.kaggle/kaggle.json`):
+
+```bash
+python3 -m paper_exp.prepare_data --download-kaggle --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
 ```
 
 If you already processed the raw datasets, place files here:
@@ -66,6 +80,7 @@ If you already processed the raw datasets, place files here:
 data/processed/NASA_paper_exp.npz
 data/processed/Oxford_paper_exp.npz
 data/processed/CALCE_paper_exp.npz
+data/processed/KaggleSDG7_paper_exp.npz  # when using the Kaggle dataset
 ```
 
 Each `.npz` file must contain:
@@ -88,9 +103,15 @@ When these files are missing, the experiment uses a calibrated synthetic fallbac
 python3 -m paper_exp.train --require-real-data
 ```
 
-### Note on the Kaggle EV charging-session DOI
+### Kaggle dataset link
 
-The article also mentions `https://doi.org/10.34740/kaggle/dsv/13492492`, an EV charging-session dataset with session-level fields such as arrival/departure time, state of charge, charging power, and energy consumption. Those records are useful operational context, but they do not directly contain the per-cycle voltage/current/capacity curves required to compute DV (`dV/dQ`), DC (`dI/dV`), and ICA (`dQ/dV`). The implemented paper experiment therefore uses the battery degradation datasets explicitly named for model validation: NASA PCoE, Oxford Battery Degradation, and CALCE.
+The user-provided Kaggle dataset is:
+
+```text
+https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7
+```
+
+Kaggle metadata describes it as a CC0 dataset combining NASA cell-level degradation data and EV fleet pack-level telemetry. The converter accepts `.mat`, `.csv`, `.txt`, `.xls`, and `.xlsx` files and looks for voltage/current/capacity or ampere-hour-throughput columns, plus optional SOH, cycle/session, cell, vehicle, or pack identifiers.
 
 ## Run
 
@@ -106,10 +127,22 @@ Prepare real paper datasets:
 python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed
 ```
 
-Full paper-aligned run on prepared real data:
+Prepare the Kaggle dataset from the provided link:
+
+```bash
+python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
+```
+
+Full paper-aligned run on prepared NASA/Oxford/CALCE data:
 
 ```bash
 python3 -m paper_exp.train --require-real-data
+```
+
+Run on the prepared Kaggle dataset:
+
+```bash
+python3 -m paper_exp.train --datasets KaggleSDG7 --require-real-data
 ```
 
 Save attention samples:

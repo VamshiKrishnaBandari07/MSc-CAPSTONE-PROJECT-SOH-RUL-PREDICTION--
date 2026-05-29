@@ -195,9 +195,16 @@ and optional attention export in an isolated package:
 python3 -m paper_exp.train --smoke   # quick verification
 python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed
 python3 -m paper_exp.train --require-real-data
+
+# User-provided Kaggle dataset
+python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
+python3 -m paper_exp.train --datasets KaggleSDG7 --require-real-data
 ```
 
 Place the paper-mentioned NASA PCoE, Oxford Battery Degradation, and CALCE raw
 files under `data/NASA`, `data/Oxford`, and `data/CALCE`, then run the converter
-to create `data/processed/*_paper_exp.npz`. See `paper_exp/README.md` for the
-expected file format, real-data workflow, and synthetic fallback behavior.
+to create `data/processed/*_paper_exp.npz`. For the Kaggle dataset, download or
+extract files from `https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7`
+under `data/KaggleSDG7`, or use `paper_exp.prepare_data --download-kaggle` with
+Kaggle API credentials. See `paper_exp/README.md` for the expected file format,
+real-data workflow, and synthetic fallback behavior.

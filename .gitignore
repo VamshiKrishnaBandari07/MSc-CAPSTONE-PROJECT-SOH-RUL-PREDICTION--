@@ -8,3 +8,5 @@ __pycache__/
 *.log
 paper_exp/outputs/
 data/processed/*.npz
+data/KaggleSDG7/*
+!data/KaggleSDG7/PLACE_DATA_HERE.txt

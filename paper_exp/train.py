@@ -305,7 +305,7 @@ def run_experiment(args: argparse.Namespace) -> Dict[str, object]:
 def build_arg_parser() -> argparse.ArgumentParser:
     defaults = PaperExperimentConfig()
     parser = argparse.ArgumentParser(description="Run the s41598-026-39911-8 paper_exp reproduction.")
-    parser.add_argument("--datasets", nargs="+", default=list(defaults.datasets), choices=sorted(defaults.datasets))
+    parser.add_argument("--datasets", nargs="+", default=list(defaults.datasets), choices=sorted(defaults.supported_datasets))
     parser.add_argument("--raw-dir", default="data", help="Directory containing processed <DATASET>_paper_exp.npz files.")
     parser.add_argument(
         "--require-real-data",

@@ -1,8 +1,13 @@
 import argparse
 import csv
+import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence
+import urllib.error
+import urllib.request
+import zipfile
 
 import numpy as np
 import scipy.io
@@ -38,9 +43,28 @@ CAPACITY_KEYS = (
     "capacity_ah",
     "q",
     "ah",
+    "ampere_hour",
+    "ampere_hour_throughput",
+    "cumulative_ampere_hour_throughput",
+    "amp_hour",
+    "throughput",
 )
 TIME_KEYS = ("test_time", "relative_time", "relativeTime", "time", "time_s", "t")
-CYCLE_KEYS = ("cycle", "cycle_index", "cycle number", "cycle_number", "cycleindex")
+CYCLE_KEYS = (
+    "cycle",
+    "cycle_id",
+    "cycle_index",
+    "cycle number",
+    "cycle_number",
+    "cycleindex",
+    "session",
+    "session_id",
+    "charge_cycle",
+)
+ENTITY_KEYS = ("cell_id", "cellid", "battery_id", "batteryid", "vehicle_id", "vehicleid", "vehicle_name", "pack_id", "packid", "vin")
+SOH_KEYS = ("soh", "state_of_health", "state of health", "health", "capacity_retention")
+KAGGLE_DATASET_SLUG = "drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7"
+KAGGLE_DATASET_NAME = "KaggleSDG7"
 
 
 def _normalize_key(value: object) -> str:
@@ -290,29 +314,49 @@ def parse_tabular_file(path: Path, dataset_name: str) -> List[RawBatteryCycle]:
     capacity_col = _find_column(columns, CAPACITY_KEYS)
     time_col = _find_column(columns, TIME_KEYS)
     cycle_col = _find_column(columns, CYCLE_KEYS)
+    entity_col = _find_column(columns, ENTITY_KEYS)
+    soh_col = _find_column(columns, SOH_KEYS)
 
     if voltage_col is None or current_col is None:
         return []
 
     if pd is not None and hasattr(table, "columns"):
-        groups = table.groupby(cycle_col, sort=True) if cycle_col else [(0, table)]
+        group_columns = [column for column in (entity_col, cycle_col) if column is not None]
+        groups = table.groupby(group_columns, sort=True) if group_columns else [(path.stem, table)]
         cycles = []
-        for cycle_index, (_, group) in enumerate(groups):
+        for cycle_index, (group_key, group) in enumerate(groups):
             voltage = np.asarray(group[voltage_col], dtype=np.float64)
             current = np.asarray(group[current_col], dtype=np.float64)
             capacity = np.asarray(group[capacity_col], dtype=np.float64) if capacity_col else None
             if capacity is None or capacity.size < 2:
                 time = np.asarray(group[time_col], dtype=np.float64) if time_col else None
                 capacity = _integrate_capacity(current, time)
+            soh = None
+            if soh_col:
+                soh_values = np.asarray(group[soh_col], dtype=np.float64)
+                soh_values = soh_values[np.isfinite(soh_values)]
+                if soh_values.size:
+                    soh = float(np.nanmean(soh_values))
+                    if soh > 1.5:
+                        soh /= 100.0
+            cell_id = str(group_key[0] if isinstance(group_key, tuple) else group_key) if entity_col else path.stem
             cycles.append(
-                RawBatteryCycle(dataset_name, path.stem, cycle_index, voltage, current, capacity, soh=None)
+                RawBatteryCycle(dataset_name, cell_id, cycle_index, voltage, current, capacity, soh=soh)
             )
         return _assign_soh_from_capacity(cycles)
 
     voltage = _column_values(table, voltage_col)
     current = _column_values(table, current_col)
     capacity = _column_values(table, capacity_col) if capacity_col else _integrate_capacity(current, None)
-    return _assign_soh_from_capacity([RawBatteryCycle(dataset_name, path.stem, 0, voltage, current, capacity, soh=None)])
+    soh = None
+    if soh_col:
+        soh_values = _column_values(table, soh_col)
+        soh_values = soh_values[np.isfinite(soh_values)]
+        if soh_values.size:
+            soh = float(np.nanmean(soh_values))
+            if soh > 1.5:
+                soh /= 100.0
+    return _assign_soh_from_capacity([RawBatteryCycle(dataset_name, path.stem, 0, voltage, current, capacity, soh=soh)])
 
 
 def _assign_soh_from_capacity(cycles: List[RawBatteryCycle]) -> List[RawBatteryCycle]:
@@ -332,23 +376,46 @@ def _assign_soh_from_capacity(cycles: List[RawBatteryCycle]) -> List[RawBatteryC
     return assigned
 
 
+def _candidate_dataset_dirs(raw_dir: Path, dataset_name: str) -> List[Path]:
+    if dataset_name == KAGGLE_DATASET_NAME:
+        return [
+            raw_dir / KAGGLE_DATASET_NAME,
+            raw_dir / "Kaggle",
+            raw_dir / "kaggle",
+            raw_dir,
+        ]
+    return [raw_dir / dataset_name]
+
+
+def _parse_raw_file(path: Path, dataset_name: str) -> List[RawBatteryCycle]:
+    suffix = path.suffix.lower()
+    if suffix == ".mat":
+        if dataset_name == "NASA" or path.stem.upper().startswith("B"):
+            cycles = parse_nasa_mat(path)
+            for cycle in cycles:
+                if dataset_name == KAGGLE_DATASET_NAME:
+                    cycle.dataset_name = KAGGLE_DATASET_NAME
+            return cycles
+        return parse_generic_mat(path, dataset_name)
+    if suffix in {".csv", ".txt", ".xlsx", ".xls"}:
+        return parse_tabular_file(path, dataset_name)
+    return []
+
+
 def parse_dataset_dir(raw_dir: Path, dataset_name: str) -> List[RawBatteryCycle]:
-    dataset_dir = raw_dir / dataset_name
-    if not dataset_dir.exists():
-        raise FileNotFoundError(f"Missing dataset directory: {dataset_dir}")
+    dataset_dirs = [path for path in _candidate_dataset_dirs(raw_dir, dataset_name) if path.exists()]
+    if not dataset_dirs:
+        expected = _candidate_dataset_dirs(raw_dir, dataset_name)[0]
+        raise FileNotFoundError(f"Missing dataset directory: {expected}")
 
     cycles: List[RawBatteryCycle] = []
-    for path in sorted(dataset_dir.rglob("*")):
-        if not path.is_file() or path.name.startswith("."):
-            continue
-        suffix = path.suffix.lower()
-        if suffix == ".mat":
-            if dataset_name == "NASA":
-                cycles.extend(parse_nasa_mat(path))
-            else:
-                cycles.extend(parse_generic_mat(path, dataset_name))
-        elif suffix in {".csv", ".txt", ".xlsx", ".xls"}:
-            cycles.extend(parse_tabular_file(path, dataset_name))
+    seen_files = set()
+    for dataset_dir in dataset_dirs:
+        for path in sorted(dataset_dir.rglob("*")):
+            if not path.is_file() or path.name.startswith(".") or path in seen_files:
+                continue
+            seen_files.add(path)
+            cycles.extend(_parse_raw_file(path, dataset_name))
 
     valid_cycles = [
         cycle for cycle in _assign_soh_from_capacity(cycles)
@@ -356,8 +423,8 @@ def parse_dataset_dir(raw_dir: Path, dataset_name: str) -> List[RawBatteryCycle]
     ]
     if not valid_cycles:
         raise RuntimeError(
-            f"No usable {dataset_name} cycles found in {dataset_dir}. "
-            "Expected raw voltage/current/capacity cycle files from the paper datasets."
+            f"No usable {dataset_name} cycles found under {', '.join(str(path) for path in dataset_dirs)}. "
+            "Expected raw voltage/current/capacity cycle files from the paper datasets or Kaggle export."
         )
     return valid_cycles
 
@@ -414,7 +481,7 @@ def write_demo_raw_data(raw_dir: Path) -> None:
     """Create tiny CSV-form battery curves so the converter can be smoke-tested."""
 
     rng = np.random.default_rng(7)
-    for dataset_name in ("NASA", "Oxford", "CALCE"):
+    for dataset_name in ("NASA", "Oxford", "CALCE", KAGGLE_DATASET_NAME):
         dataset_dir = raw_dir / dataset_name
         dataset_dir.mkdir(parents=True, exist_ok=True)
         path = dataset_dir / f"{dataset_name}_demo_cycles.csv"
@@ -436,12 +503,70 @@ def write_demo_raw_data(raw_dir: Path) -> None:
                     ])
 
 
+def _load_kaggle_credentials() -> Optional[tuple]:
+    username = os.environ.get("KAGGLE_USERNAME")
+    key = os.environ.get("KAGGLE_KEY")
+    if username and key:
+        return username, key
+
+    kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
+    if kaggle_json.exists():
+        with kaggle_json.open("r", encoding="utf-8") as handle:
+            credentials = json.load(handle)
+        username = credentials.get("username")
+        key = credentials.get("key")
+        if username and key:
+            return username, key
+    return None
+
+
+def download_kaggle_dataset(slug: str, destination_dir: Path) -> Path:
+    """Download and extract a public Kaggle dataset using Kaggle API credentials."""
+
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = destination_dir / "kaggle_dataset.zip"
+    url = f"https://www.kaggle.com/api/v1/datasets/download/{slug}"
+    request = urllib.request.Request(url)
+
+    credentials = _load_kaggle_credentials()
+    if credentials:
+        import base64
+
+        token = base64.b64encode(f"{credentials[0]}:{credentials[1]}".encode("utf-8")).decode("ascii")
+        request.add_header("Authorization", f"Basic {token}")
+
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response, zip_path.open("wb") as handle:
+            handle.write(response.read())
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403, 404}:
+            raise RuntimeError(
+                "Could not download the Kaggle dataset automatically. Configure Kaggle API credentials "
+                "(`KAGGLE_USERNAME` and `KAGGLE_KEY`, or ~/.kaggle/kaggle.json), then retry; "
+                f"or download {slug} manually and extract it into {destination_dir}."
+            ) from exc
+        raise
+
+    with zipfile.ZipFile(zip_path) as archive:
+        archive.extractall(destination_dir)
+    print(f"Downloaded and extracted Kaggle dataset {slug} to {destination_dir}")
+    return destination_dir
+
+
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Prepare NASA/Oxford/CALCE data for paper_exp.")
-    parser.add_argument("--raw-dir", default="data", help="Directory containing NASA, Oxford, and CALCE folders.")
+    parser = argparse.ArgumentParser(description="Prepare NASA/Oxford/CALCE/Kaggle data for paper_exp.")
+    parser.add_argument("--raw-dir", default="data", help="Directory containing NASA, Oxford, CALCE, or KaggleSDG7 folders.")
     parser.add_argument("--output-dir", default="data/processed", help="Where *_paper_exp.npz files are written.")
-    parser.add_argument("--datasets", nargs="+", default=["NASA", "Oxford", "CALCE"], choices=["NASA", "Oxford", "CALCE"])
+    parser.add_argument("--datasets", nargs="+", default=["NASA", "Oxford", "CALCE"], choices=["NASA", "Oxford", "CALCE", KAGGLE_DATASET_NAME])
     parser.add_argument("--seq-len", type=int, default=128)
+    parser.add_argument(
+        "--download-kaggle",
+        action="store_true",
+        help="Download the user-provided Kaggle dataset into <raw-dir>/KaggleSDG7 before conversion.",
+    )
+    parser.add_argument("--kaggle-slug", default=KAGGLE_DATASET_SLUG)
     parser.add_argument(
         "--demo",
         action="store_true",
@@ -456,6 +581,8 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     if args.demo:
         write_demo_raw_data(raw_dir)
+    if args.download_kaggle:
+        download_kaggle_dataset(args.kaggle_slug, raw_dir / KAGGLE_DATASET_NAME)
     for dataset_name in args.datasets:
         prepare_dataset(raw_dir, output_dir, dataset_name, seq_len=args.seq_len)
 

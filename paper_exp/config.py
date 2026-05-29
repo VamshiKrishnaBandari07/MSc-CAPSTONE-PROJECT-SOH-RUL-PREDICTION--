@@ -7,6 +7,7 @@ class PaperExperimentConfig:
     """Hyperparameters reported for the CNN-TCN-LSTM-Attention paper setup."""
 
     datasets: Tuple[str, ...] = ("NASA", "Oxford", "CALCE")
+    supported_datasets: Tuple[str, ...] = ("NASA", "Oxford", "CALCE", "KaggleSDG7")
     seq_len: int = 128
     cycles_per_dataset: int = 3600
     n_folds: int = 5

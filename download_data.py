@@ -19,6 +19,11 @@ DATASETS = {
         "url": "https://calce.umd.edu/battery-data",
         "desc": "Maryland Center for Advanced Life Cycle Engineering (CALCE) Battery Dataset (CS2, CX2 cells)",
         "official_page": "https://calce.umd.edu/battery-data"
+    },
+    "KaggleSDG7": {
+        "url": "https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7",
+        "desc": "Deep Learning-EV Battery Pack Diagnostics (SDG 7) Kaggle dataset",
+        "official_page": "https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7"
     }
 }
 
@@ -31,7 +36,7 @@ def setup_data_folders():
     print(f"Creating Academic Data Directories...")
     print(f"==========================================")
     
-    subfolders = ["NASA", "Oxford", "CALCE", "processed"]
+    subfolders = ["NASA", "Oxford", "CALCE", "KaggleSDG7", "processed"]
     for folder in subfolders:
         path = os.path.join(base_dir, folder)
         os.makedirs(path, exist_ok=True)
@@ -77,6 +82,20 @@ def write_placeholder_guides():
                 "- CS2_35.xls / CS2_36.xls / CS2_37.xls / CS2_38.xls\n"
                 "Place the cell testing sheets directly in this directory (data/CALCE/).\n")
                 
+
+
+    # Kaggle SDG 7 Guide
+    kaggle_guide_path = os.path.join(base_dir, "KaggleSDG7", "PLACE_DATA_HERE.txt")
+    with open(kaggle_guide_path, "w", encoding="utf-8") as f:
+        f.write("=== KAGGLE DEEP LEARNING EV BATTERY PACK DIAGNOSTICS (SDG 7) GUIDE ===\n\n"
+                "Dataset Page: https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7\n\n"
+                "Option A - manual download:\n"
+                "1. Download the dataset ZIP from Kaggle.\n"
+                "2. Extract all CSV/MAT/XLS/XLSX files into data/KaggleSDG7/.\n"
+                "3. Run: python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed\n\n"
+                "Option B - Kaggle API download:\n"
+                "1. Configure KAGGLE_USERNAME and KAGGLE_KEY, or ~/.kaggle/kaggle.json.\n"
+                "2. Run: python3 -m paper_exp.prepare_data --download-kaggle --datasets KaggleSDG7 --raw-dir data --output-dir data/processed\n")
     print("[*] Placement guide files written to all dataset folders.")
 
 def main():
@@ -90,6 +109,7 @@ def main():
     print("1. Please download the raw files from the official links listed inside `data/<DatasetName>/PLACE_DATA_HERE.txt`.")
     print("2. Put the files in their respective folders.")
     print("3. For the isolated paper experiment, run `python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed`.")
+    print("   For the Kaggle dataset link, run `python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed`.")
     print("4. Then run `python3 -m paper_exp.train --require-real-data` to train on the converted paper datasets.")
     print("   The original root scripts still keep their synthetic fallback behavior for quick demonstrations.")
     print("="*50 + "\n")

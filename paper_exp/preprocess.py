@@ -68,16 +68,26 @@ def smooth_curve(values: np.ndarray, window_length: int = 15, polyorder: int = 3
 
 
 def _safe_divide(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
-    safe = np.where(np.abs(denominator) < 1e-8, np.sign(denominator) * 1e-8 + 1e-8, denominator)
+    safe = np.where(
+        np.abs(denominator) < 1e-8,
+        np.where(denominator < 0.0, -1e-8, 1e-8),
+        denominator,
+    )
     return numerator / safe
 
 
 def _min_max_scale(values: np.ndarray) -> np.ndarray:
-    vmin = float(np.min(values))
-    vmax = float(np.max(values))
+    values = np.asarray(values, dtype=np.float64)
+    finite = np.isfinite(values)
+    if not np.any(finite):
+        return np.zeros_like(values, dtype=np.float64)
+    finite_values = values[finite]
+    vmin = float(np.min(finite_values))
+    vmax = float(np.max(finite_values))
     if np.isclose(vmax, vmin):
         return np.zeros_like(values, dtype=np.float64)
-    return (values - vmin) / (vmax - vmin)
+    scaled = (np.nan_to_num(values, nan=vmin, posinf=vmax, neginf=vmin) - vmin) / (vmax - vmin)
+    return np.clip(scaled, 0.0, 1.0)
 
 
 def _align_to_voltage_grid(values: np.ndarray, voltage_axis: np.ndarray, voltage_grid: np.ndarray) -> np.ndarray:
@@ -245,6 +255,12 @@ def load_paper_experiment_data(
                     f"Prepared {dataset_name} paper dataset not found at {expected}. "
                     "Run `python3 -m paper_exp.prepare_data` after placing the raw paper dataset files "
                     "under data/NASA, data/Oxford, and data/CALCE."
+                )
+            if dataset_name not in DATASET_PROFILES:
+                raise FileNotFoundError(
+                    f"Prepared {dataset_name} paper dataset not found. "
+                    "This dataset has no synthetic fallback; run `python3 -m paper_exp.prepare_data "
+                    "--datasets KaggleSDG7` after downloading or extracting the Kaggle files."
                 )
             print(f"[{dataset_name}] Prepared NPZ not found; using paper-style synthetic fallback.")
             bundle = generate_paper_synthetic_dataset(

@@ -1,0 +1,18 @@
+=== KAGGLE DEEP LEARNING EV BATTERY PACK DIAGNOSTICS (SDG 7) GUIDE ===
+
+Dataset Page:
+https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7
+
+Option A - manual download:
+1. Download the dataset ZIP from Kaggle.
+2. Extract all CSV/MAT/XLS/XLSX files into this directory.
+3. Run:
+   python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
+4. Train on the converted Kaggle dataset:
+   python3 -m paper_exp.train --datasets KaggleSDG7 --require-real-data
+
+Option B - Kaggle API download:
+1. Configure KAGGLE_USERNAME and KAGGLE_KEY, or ~/.kaggle/kaggle.json.
+2. Run:
+   python3 -m paper_exp.prepare_data --download-kaggle --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
+
