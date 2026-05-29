@@ -85,7 +85,7 @@ We evaluated the performance of our optimized framework against the paper's orig
 ├── requirements.txt   # Python package dependencies
 ├── preprocess.py      # SG smoothing, dQ/dV, dV/dQ, dI/dV extraction, NASA/Oxford/CALCE simulators
 ├── preprocess_paper.py # Paper-aligned preprocessing & synthetic data
-├── paper_exp/         # Full paper reproduction experiment package
+├── paper_exp/         # Full paper reproduction experiment package and data converter
 ├── model.py           # PyTorch implementation of the 1D-CNN + TCN + LSTM + Attention model
 ├── model_paper.py     # Exact paper reproduction (SOH-only head)
 ├── train.py           # Physics-informed multi-task training loop & cross-validation
@@ -192,9 +192,12 @@ CNN-TCN-LSTM-Attention SOH model, 5-fold cross-validation, metrics, latency, ene
 and optional attention export in an isolated package:
 
 ```bash
-python -m paper_exp.train --smoke   # quick verification
-python -m paper_exp.train           # full paper-aligned run
+python3 -m paper_exp.train --smoke   # quick verification
+python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed
+python3 -m paper_exp.train --require-real-data
 ```
 
-See `paper_exp/README.md` for the expected `data/processed/*_paper_exp.npz`
-format and the synthetic fallback behavior when raw public datasets are unavailable.
+Place the paper-mentioned NASA PCoE, Oxford Battery Degradation, and CALCE raw
+files under `data/NASA`, `data/Oxford`, and `data/CALCE`, then run the converter
+to create `data/processed/*_paper_exp.npz`. See `paper_exp/README.md` for the
+expected file format, real-data workflow, and synthetic fallback behavior.

@@ -239,6 +239,7 @@ def run_experiment(args: argparse.Namespace) -> Dict[str, object]:
         seq_len=args.seq_len,
         raw_dir=args.raw_dir,
         seed=args.seed,
+        require_real_data=args.require_real_data,
     )
     folds = make_stratified_cycle_folds(bundle.dataset_names, args.n_folds)
     print(f"Loaded {len(bundle.soh)} cycles: features={bundle.features.shape}, device={device}")
@@ -306,6 +307,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the s41598-026-39911-8 paper_exp reproduction.")
     parser.add_argument("--datasets", nargs="+", default=list(defaults.datasets), choices=sorted(defaults.datasets))
     parser.add_argument("--raw-dir", default="data", help="Directory containing processed <DATASET>_paper_exp.npz files.")
+    parser.add_argument(
+        "--require-real-data",
+        action="store_true",
+        help="Fail instead of using synthetic fallback when processed paper dataset files are missing.",
+    )
     parser.add_argument("--output-dir", default=os.path.join("paper_exp", "outputs"))
     parser.add_argument("--seq-len", type=int, default=defaults.seq_len)
     parser.add_argument("--cycles-per-dataset", type=int, default=defaults.cycles_per_dataset)

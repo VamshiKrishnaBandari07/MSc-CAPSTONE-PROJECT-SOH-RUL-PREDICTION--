@@ -220,9 +220,13 @@ def load_paper_experiment_data(
     seq_len: int,
     raw_dir: Optional[str] = None,
     seed: int = 42,
+    require_real_data: bool = False,
 ) -> PaperDatasetBundle:
     """
     Load prepared paper experiment arrays if present, otherwise synthesize calibrated data.
+
+    Set `require_real_data=True` from training runs that must fail when the
+    paper datasets have not yet been converted with `paper_exp.prepare_data`.
 
     Expected real-data format per dataset:
     `data/processed/<DATASET>_paper_exp.npz` with arrays `features` [N,3,L] and `soh` [N].
@@ -235,6 +239,13 @@ def load_paper_experiment_data(
             npz_path = os.path.join(raw_dir, "processed", f"{dataset_name}_paper_exp.npz")
         bundle = _load_npz_dataset(npz_path, dataset_name) if npz_path else None
         if bundle is None:
+            if require_real_data:
+                expected = npz_path or os.path.join("data", "processed", f"{dataset_name}_paper_exp.npz")
+                raise FileNotFoundError(
+                    f"Prepared {dataset_name} paper dataset not found at {expected}. "
+                    "Run `python3 -m paper_exp.prepare_data` after placing the raw paper dataset files "
+                    "under data/NASA, data/Oxford, and data/CALCE."
+                )
             print(f"[{dataset_name}] Prepared NPZ not found; using paper-style synthetic fallback.")
             bundle = generate_paper_synthetic_dataset(
                 dataset_name=dataset_name,

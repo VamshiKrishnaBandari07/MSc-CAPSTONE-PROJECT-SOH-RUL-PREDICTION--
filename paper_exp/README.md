@@ -36,6 +36,7 @@ paper_exp/
 ├── config.py       # Paper hyperparameters and reported targets
 ├── model.py        # CNN-TCN-LSTM-Attention SOH regressor (~0.35M params)
 ├── preprocess.py   # DV/DC/ICA extraction and dataset loading/fallback synthesis
+├── prepare_data.py # Converts NASA/Oxford/CALCE raw files into processed NPZ tensors
 ├── train.py        # Cross-validation training, metrics, efficiency report
 └── README.md
 ```
@@ -43,6 +44,21 @@ paper_exp/
 ## Dataset input
 
 The paper uses NASA PCoE, Oxford, and CALCE battery degradation datasets. This repo does not ship those raw public datasets.
+
+Place the raw files downloaded from the paper-mentioned repositories under:
+
+```text
+data/
+├── NASA/      # NASA PCoE battery .mat files such as B0005.mat, B0006.mat, ...
+├── Oxford/    # Oxford Battery Degradation .mat files
+└── CALCE/     # CALCE battery CSV/XLS/XLSX files
+```
+
+Then convert them into the aligned DV/DC/ICA tensors used by the experiment:
+
+```bash
+python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed
+```
 
 If you already processed the raw datasets, place files here:
 
@@ -64,27 +80,42 @@ Optional arrays:
 
 - `dataset_names`
 - `cycle_indices`
+- `cell_ids`
 
-When these files are missing, the experiment uses a calibrated synthetic fallback that follows the same preprocessing and feature alignment pipeline. Use the real datasets for paper-level results.
+When these files are missing, the experiment uses a calibrated synthetic fallback that follows the same preprocessing and feature alignment pipeline. Use the real datasets for paper-level results. To force real paper data and prevent fallback:
+
+```bash
+python3 -m paper_exp.train --require-real-data
+```
+
+### Note on the Kaggle EV charging-session DOI
+
+The article also mentions `https://doi.org/10.34740/kaggle/dsv/13492492`, an EV charging-session dataset with session-level fields such as arrival/departure time, state of charge, charging power, and energy consumption. Those records are useful operational context, but they do not directly contain the per-cycle voltage/current/capacity curves required to compute DV (`dV/dQ`), DC (`dI/dV`), and ICA (`dQ/dV`). The implemented paper experiment therefore uses the battery degradation datasets explicitly named for model validation: NASA PCoE, Oxford Battery Degradation, and CALCE.
 
 ## Run
 
 Quick smoke verification:
 
 ```bash
-python -m paper_exp.train --smoke
+python3 -m paper_exp.train --smoke
 ```
 
-Full paper-aligned run:
+Prepare real paper datasets:
 
 ```bash
-python -m paper_exp.train
+python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed
+```
+
+Full paper-aligned run on prepared real data:
+
+```bash
+python3 -m paper_exp.train --require-real-data
 ```
 
 Save attention samples:
 
 ```bash
-python -m paper_exp.train --save-attention
+python3 -m paper_exp.train --save-attention
 ```
 
 Outputs are written under `paper_exp/outputs/` and are ignored by git.

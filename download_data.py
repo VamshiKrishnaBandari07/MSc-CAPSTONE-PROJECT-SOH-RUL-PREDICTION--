@@ -89,7 +89,9 @@ def main():
     print("Because public battery aging datasets are multi-gigabyte files protected by university portals:")
     print("1. Please download the raw files from the official links listed inside `data/<DatasetName>/PLACE_DATA_HERE.txt`.")
     print("2. Put the files in their respective folders.")
-    print("3. Run the train script (`python train.py`), which will automatically detect and parse the raw files, or execute high-fidelity simulation fallbacks if you want to run instant demonstration runs without large downloads.")
+    print("3. For the isolated paper experiment, run `python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed`.")
+    print("4. Then run `python3 -m paper_exp.train --require-real-data` to train on the converted paper datasets.")
+    print("   The original root scripts still keep their synthetic fallback behavior for quick demonstrations.")
     print("="*50 + "\n")
 
 if __name__ == "__main__":
