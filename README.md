@@ -186,25 +186,36 @@ python benchmark.py
 python train_paper.py
 ```
 
-### 5. Run the full paper experiment package
-The `paper_exp/` folder adds the paper-aligned DV/DC/ICA pipeline, ~0.35M-parameter
-CNN-TCN-LSTM-Attention SOH model, 5-fold cross-validation, metrics, latency, energy,
-and optional attention export in an isolated package:
+### 5. Run the full paper experiment and comparison suite
+The `paper_exp/` folder is the clean paper-first workflow:
+
+1. Prepare the real dataset.
+2. Run the paper-aligned SOH-only experiment.
+3. Run the existing modified/thesis SOH+RUL experiment.
+4. Generate JSON and Markdown comparison reports.
 
 ```bash
-python3 -m paper_exp.train --smoke   # quick verification
-python3 -m paper_exp.prepare_data --raw-dir data --output-dir data/processed
-python3 -m paper_exp.train --require-real-data
+# Quick verification
+python3 -m paper_exp.run_comparison --smoke --raw-dir data --paper-datasets KaggleSDG7
 
-# User-provided Kaggle dataset
-python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
-python3 -m paper_exp.train --datasets KaggleSDG7 --require-real-data
+# Full paper-first suite with the user-provided Kaggle dataset
+python3 -m paper_exp.prepare_data --download-kaggle --datasets KaggleSDG7 --raw-dir data --output-dir data/processed --seq-len 128
+python3 -m paper_exp.run_comparison \
+  --raw-dir data \
+  --paper-datasets KaggleSDG7 \
+  --modified-datasets NASA Oxford CALCE \
+  --paper-epochs 300 \
+  --modified-epochs 5
 ```
 
-Place the paper-mentioned NASA PCoE, Oxford Battery Degradation, and CALCE raw
-files under `data/NASA`, `data/Oxford`, and `data/CALCE`, then run the converter
-to create `data/processed/*_paper_exp.npz`. For the Kaggle dataset, download or
-extract files from `https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7`
-under `data/KaggleSDG7`, or use `paper_exp.prepare_data --download-kaggle` with
-Kaggle API credentials. See `paper_exp/README.md` for the expected file format,
-real-data workflow, and synthetic fallback behavior.
+The generated comparison is saved at:
+
+```text
+paper_exp/outputs/full_comparison/03_comparison/comparison.md
+```
+
+Place NASA/Oxford/CALCE raw files under `data/NASA`, `data/Oxford`, and
+`data/CALCE` when you want to use those paper-mentioned sources. For the Kaggle
+dataset, download or extract files from `https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7`
+under `data/KaggleSDG7`, or use `paper_exp.prepare_data --download-kaggle`.
+See `paper_exp/README.md` for the detailed file format and workflow.

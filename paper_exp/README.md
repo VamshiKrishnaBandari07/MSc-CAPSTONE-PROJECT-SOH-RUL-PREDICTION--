@@ -36,9 +36,59 @@ paper_exp/
 ├── config.py       # Paper hyperparameters and reported targets
 ├── model.py        # CNN-TCN-LSTM-Attention SOH regressor (~0.35M params)
 ├── preprocess.py   # DV/DC/ICA extraction and dataset loading/fallback synthesis
-├── prepare_data.py # Converts NASA/Oxford/CALCE raw files into processed NPZ tensors
-├── train.py        # Cross-validation training, metrics, efficiency report
+├── prepare_data.py       # Converts NASA/Oxford/CALCE/Kaggle raw files into processed NPZ tensors
+├── train.py              # Paper experiment: SOH-only training, metrics, efficiency report
+├── modified_experiment.py # Existing repo modified/thesis SOH+RUL experiment wrapper
+├── compare_results.py    # Builds JSON/Markdown comparison report
+├── run_comparison.py     # Runs paper first, modified second, then comparison
 └── README.md
+```
+
+
+## Recommended full workflow
+
+Use this when you want the repo to look and run in the correct paper-first order.
+
+### 1. Prepare the real Kaggle dataset
+
+```bash
+python3 -m paper_exp.prepare_data --download-kaggle --datasets KaggleSDG7 --raw-dir data --output-dir data/processed --seq-len 128
+```
+
+If you manually downloaded the Kaggle ZIP, extract it into `data/KaggleSDG7/` and run without `--download-kaggle`:
+
+```bash
+python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed --seq-len 128
+```
+
+### 2. Run the full comparison suite
+
+This runs the paper experiment first, then the existing modified repo experiment, then creates a comparison report.
+
+```bash
+python3 -m paper_exp.run_comparison \
+  --raw-dir data \
+  --paper-datasets KaggleSDG7 \
+  --modified-datasets NASA Oxford CALCE \
+  --paper-epochs 300 \
+  --modified-epochs 5
+```
+
+For a quick verification run:
+
+```bash
+python3 -m paper_exp.run_comparison --smoke --raw-dir data --paper-datasets KaggleSDG7
+```
+
+Generated files:
+
+```text
+paper_exp/outputs/full_comparison/
+├── 01_paper_experiment/metrics.json
+├── 02_modified_experiment/metrics.json
+├── 03_comparison/comparison.json
+├── 03_comparison/comparison.md
+└── logs/
 ```
 
 ## Dataset input
