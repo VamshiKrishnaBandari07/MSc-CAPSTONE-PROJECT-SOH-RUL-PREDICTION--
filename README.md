@@ -298,6 +298,7 @@ python3 train.py
 - Latency and energy values are hardware dependent. The scripts estimate energy as `latency_ms * edge_power_watts`.
 - Root `train.py` uses synthetic fallback data by default and is best treated as the MSc extension demonstration unless real loading is added there.
 - `docs/AUDIT_REPORT.md` records a supervisor-style critique, including missing artefacts and priority improvements.
+- `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md` summarises the paper-target comparison, showing the initial result, the changes tried, and the best stable local metric.
 
 ---
 
