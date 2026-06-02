@@ -414,6 +414,8 @@ def parse_dataset_dir(raw_dir: Path, dataset_name: str) -> List[RawBatteryCycle]
         for path in sorted(dataset_dir.rglob("*")):
             if not path.is_file() or path.name.startswith(".") or path in seen_files:
                 continue
+            if path.name.upper().startswith("PLACE_DATA_HERE") or path.name.lower().startswith("readme"):
+                continue
             seen_files.add(path)
             cycles.extend(_parse_raw_file(path, dataset_name))
 
@@ -462,6 +464,107 @@ def convert_cycles(cycles: Sequence[RawBatteryCycle], seq_len: int) -> Dict[str,
         "cell_ids": np.asarray(cell_ids),
         "cycle_indices": np.asarray(cycle_indices, dtype=np.int32),
     }
+
+
+def _scale_feature_tensor(features: np.ndarray) -> np.ndarray:
+    features = np.asarray(features, dtype=np.float32)
+    for channel in range(features.shape[1]):
+        values = features[:, channel, :]
+        finite = np.isfinite(values)
+        if not np.any(finite):
+            features[:, channel, :] = 0.0
+            continue
+        finite_values = values[finite]
+        vmin = float(np.min(finite_values))
+        vmax = float(np.max(finite_values))
+        if np.isclose(vmin, vmax):
+            features[:, channel, :] = 0.0
+            continue
+        cleaned = np.nan_to_num(values, nan=vmin, posinf=vmax, neginf=vmin)
+        features[:, channel, :] = np.clip((cleaned - vmin) / (vmax - vmin), 0.0, 1.0)
+    return features
+
+
+def convert_kaggle_cycle_sequences(raw_dir: Path, output_dir: Path, window_len: int) -> Path:
+    """
+    Build cycle-to-cycle sequences from the Kaggle SDG 7 CSV files.
+
+    The paper describes the recurrent layers as modelling cycle-to-cycle ageing.
+    This representation uses one time step per cycle rather than one time step per
+    voltage-grid sample, with channels based on Kaggle's provided ICA/DVA and
+    voltage trend columns.
+    """
+
+    dataset_dir = raw_dir / KAGGLE_DATASET_NAME
+    if not dataset_dir.exists():
+        raise FileNotFoundError(f"Missing Kaggle dataset directory: {dataset_dir}")
+
+    if pd is None:
+        raise RuntimeError("Kaggle cycle-sequence conversion requires pandas.")
+
+    features = []
+    soh = []
+    dataset_names = []
+    cell_ids = []
+    cycle_indices = []
+    csv_names = [
+        "cell_level_dataset.csv",
+        "cell_level_dataset_multichem.csv",
+        "pack_level_dataset.csv",
+        "pack_level_dataset_multichem.csv",
+    ]
+
+    for csv_name in csv_names:
+        path = dataset_dir / csv_name
+        if not path.exists():
+            continue
+        table = pd.read_csv(path)
+        entity_col = "CellID" if "CellID" in table.columns else "PackID"
+        required = {entity_col, "Cycle", "ICA", "DVA", "Voltage", "SoH"}
+        if not required.issubset(set(table.columns)):
+            continue
+
+        grouped = (
+            table.groupby([entity_col, "Cycle"], sort=True)
+            .agg({"ICA": "mean", "DVA": "mean", "Voltage": "mean", "SoH": "mean"})
+            .reset_index()
+        )
+
+        for entity_id, entity_frame in grouped.groupby(entity_col, sort=True):
+            entity_frame = entity_frame.sort_values("Cycle")
+            series = entity_frame[["ICA", "DVA", "Voltage"]].to_numpy(dtype=np.float64).T
+            targets = entity_frame["SoH"].to_numpy(dtype=np.float64)
+            cycles = entity_frame["Cycle"].to_numpy(dtype=np.int32)
+            if series.shape[1] < window_len:
+                continue
+            for end_idx in range(window_len - 1, series.shape[1]):
+                start_idx = end_idx - window_len + 1
+                features.append(series[:, start_idx : end_idx + 1])
+                soh.append(targets[end_idx])
+                dataset_names.append(KAGGLE_DATASET_NAME)
+                cell_ids.append(f"{csv_name}:{entity_id}")
+                cycle_indices.append(cycles[end_idx])
+
+    if not features:
+        raise RuntimeError("No Kaggle cycle sequences could be built from the downloaded CSV files.")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{KAGGLE_DATASET_NAME}_paper_exp.npz"
+    feature_array = _scale_feature_tensor(np.asarray(features, dtype=np.float32))
+    soh_array = np.asarray(soh, dtype=np.float32)
+    np.savez_compressed(
+        output_path,
+        features=feature_array,
+        soh=soh_array,
+        dataset_names=np.asarray(dataset_names),
+        cell_ids=np.asarray(cell_ids),
+        cycle_indices=np.asarray(cycle_indices, dtype=np.int32),
+    )
+    print(
+        f"[{KAGGLE_DATASET_NAME} cycle-sequence] wrote {output_path} | "
+        f"features={feature_array.shape} | soh_range=({soh_array.min():.3f}, {soh_array.max():.3f})"
+    )
+    return output_path
 
 
 def prepare_dataset(raw_dir: Path, output_dir: Path, dataset_name: str, seq_len: int) -> Path:
@@ -562,6 +665,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--datasets", nargs="+", default=["NASA", "Oxford", "CALCE"], choices=["NASA", "Oxford", "CALCE", KAGGLE_DATASET_NAME])
     parser.add_argument("--seq-len", type=int, default=128)
     parser.add_argument(
+        "--kaggle-cycle-sequences",
+        action="store_true",
+        help="For KaggleSDG7, build cycle-to-cycle sequences from provided ICA/DVA/Voltage columns.",
+    )
+    parser.add_argument(
         "--download-kaggle",
         action="store_true",
         help="Download the user-provided Kaggle dataset into <raw-dir>/KaggleSDG7 before conversion.",
@@ -584,7 +692,10 @@ def main() -> None:
     if args.download_kaggle:
         download_kaggle_dataset(args.kaggle_slug, raw_dir / KAGGLE_DATASET_NAME)
     for dataset_name in args.datasets:
-        prepare_dataset(raw_dir, output_dir, dataset_name, seq_len=args.seq_len)
+        if args.kaggle_cycle_sequences and dataset_name == KAGGLE_DATASET_NAME:
+            convert_kaggle_cycle_sequences(raw_dir, output_dir, window_len=args.seq_len)
+        else:
+            prepare_dataset(raw_dir, output_dir, dataset_name, seq_len=args.seq_len)
 
 
 if __name__ == "__main__":

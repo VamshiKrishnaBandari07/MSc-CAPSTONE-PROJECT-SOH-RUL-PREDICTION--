@@ -183,6 +183,18 @@ Prepare the Kaggle dataset from the provided link:
 python3 -m paper_exp.prepare_data --datasets KaggleSDG7 --raw-dir data --output-dir data/processed
 ```
 
+Prepare Kaggle as cycle-to-cycle sequences, which is closer to the paper's
+description of the recurrent layers modelling degradation across cycles:
+
+```bash
+python3 -m paper_exp.prepare_data \
+  --datasets KaggleSDG7 \
+  --raw-dir data \
+  --output-dir data/processed \
+  --seq-len 32 \
+  --kaggle-cycle-sequences
+```
+
 Full paper-aligned run on prepared NASA/Oxford/CALCE data:
 
 ```bash
@@ -192,7 +204,10 @@ python3 -m paper_exp.train --require-real-data
 Run on the prepared Kaggle dataset:
 
 ```bash
-python3 -m paper_exp.train --datasets KaggleSDG7 --require-real-data
+python3 -m paper_exp.train \
+  --datasets KaggleSDG7 \
+  --require-real-data \
+  --fold-strategy stratified_random
 ```
 
 Save attention samples:

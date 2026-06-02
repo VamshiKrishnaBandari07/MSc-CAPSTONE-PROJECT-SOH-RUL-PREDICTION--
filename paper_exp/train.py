@@ -48,12 +48,13 @@ def set_seed(seed: int) -> None:
     torch.backends.cudnn.benchmark = True
 
 
-def make_stratified_cycle_folds(dataset_names: np.ndarray, n_folds: int) -> List[np.ndarray]:
+def make_cycle_segment_folds(dataset_names: np.ndarray, n_folds: int) -> List[np.ndarray]:
     """
-    Build 5-fold stratified cycle segmentation without an sklearn dependency.
+    Build contiguous cycle-segment folds without an sklearn dependency.
 
     Each fold receives a contiguous cycle segment from every dataset so NASA, Oxford,
-    and CALCE remain represented in all validation splits.
+    and CALCE remain represented in all validation splits. This is stricter than a
+    random split because validation folds often contain unseen ageing regions.
     """
 
     folds = [[] for _ in range(n_folds)]
@@ -62,6 +63,45 @@ def make_stratified_cycle_folds(dataset_names: np.ndarray, n_folds: int) -> List
         for fold_id, fold_indices in enumerate(np.array_split(dataset_indices, n_folds)):
             folds[fold_id].extend(fold_indices.tolist())
     return [np.asarray(sorted(fold), dtype=np.int64) for fold in folds]
+
+
+def make_stratified_random_folds(soh: np.ndarray, dataset_names: np.ndarray, n_folds: int, seed: int) -> List[np.ndarray]:
+    """
+    Build random folds stratified by dataset and SOH bins.
+
+    This better matches the paper wording of "stratified cycle segmentation" and
+    avoids validation folds that contain only early- or late-life cycle regions.
+    """
+
+    rng = np.random.default_rng(seed)
+    folds = [[] for _ in range(n_folds)]
+    quantiles = np.quantile(soh, np.linspace(0.0, 1.0, min(10, len(soh)) + 1))
+    quantiles = np.unique(quantiles)
+
+    for dataset_name in np.unique(dataset_names):
+        dataset_mask = dataset_names == dataset_name
+        dataset_indices = np.where(dataset_mask)[0]
+        if quantiles.size <= 2:
+            strata = [dataset_indices]
+        else:
+            bin_ids = np.digitize(soh[dataset_indices], quantiles[1:-1], right=True)
+            strata = [dataset_indices[bin_ids == bin_id] for bin_id in np.unique(bin_ids)]
+
+        for stratum in strata:
+            shuffled = np.asarray(stratum, dtype=np.int64)
+            rng.shuffle(shuffled)
+            for fold_id, fold_indices in enumerate(np.array_split(shuffled, n_folds)):
+                folds[fold_id].extend(fold_indices.tolist())
+
+    return [np.asarray(sorted(fold), dtype=np.int64) for fold in folds]
+
+
+def make_folds(bundle: PaperDatasetBundle, n_folds: int, strategy: str, seed: int) -> List[np.ndarray]:
+    if strategy == "cycle_segment":
+        return make_cycle_segment_folds(bundle.dataset_names, n_folds)
+    if strategy == "stratified_random":
+        return make_stratified_random_folds(bundle.soh, bundle.dataset_names, n_folds, seed)
+    raise ValueError(f"Unsupported fold strategy: {strategy}")
 
 
 def regression_metrics(predictions: np.ndarray, targets: np.ndarray) -> Dict[str, float]:
@@ -151,12 +191,22 @@ def train_one_fold(
                 predictions, _ = model(features)
                 loss = criterion(predictions, soh)
 
+            if not torch.isfinite(loss):
+                print(f"Fold {fold_id:02d} encountered non-finite loss; stopping this fold early.")
+                epochs_without_improvement = args.early_stopping_patience
+                break
+
             if use_amp:
                 scaler.scale(loss).backward()
+                if args.grad_clip > 0:
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
                 scaler.step(optimizer)
                 scaler.update()
             else:
                 loss.backward()
+                if args.grad_clip > 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
                 optimizer.step()
             train_loss += loss.item() * features.size(0)
 
@@ -241,7 +291,7 @@ def run_experiment(args: argparse.Namespace) -> Dict[str, object]:
         seed=args.seed,
         require_real_data=args.require_real_data,
     )
-    folds = make_stratified_cycle_folds(bundle.dataset_names, args.n_folds)
+    folds = make_folds(bundle, args.n_folds, args.fold_strategy, args.seed)
     actual_seq_len = int(bundle.features.shape[-1])
     if actual_seq_len != args.seq_len:
         print(
@@ -322,6 +372,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seq-len", type=int, default=defaults.seq_len)
     parser.add_argument("--cycles-per-dataset", type=int, default=defaults.cycles_per_dataset)
     parser.add_argument("--n-folds", type=int, default=defaults.n_folds)
+    parser.add_argument(
+        "--fold-strategy",
+        choices=["cycle_segment", "stratified_random"],
+        default="cycle_segment",
+        help=(
+            "Validation fold construction. cycle_segment is stricter and keeps contiguous ageing regions; "
+            "stratified_random balances SOH bins across folds and is closer to the paper wording."
+        ),
+    )
     parser.add_argument("--epochs", type=int, default=defaults.epochs)
     parser.add_argument("--batch-size", type=int, default=defaults.batch_size)
     parser.add_argument("--learning-rate", type=float, default=defaults.learning_rate)
@@ -329,6 +388,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--adam-beta2", type=float, default=defaults.adam_beta2)
     parser.add_argument("--weight-decay", type=float, default=defaults.weight_decay)
     parser.add_argument("--dropout", type=float, default=defaults.dropout)
+    parser.add_argument("--grad-clip", type=float, default=1.0, help="Gradient norm clipping; set <=0 to disable.")
     parser.add_argument("--early-stopping-patience", type=int, default=defaults.early_stopping_patience)
     parser.add_argument("--scheduler-factor", type=float, default=defaults.scheduler_factor)
     parser.add_argument("--scheduler-patience", type=int, default=defaults.scheduler_patience)
