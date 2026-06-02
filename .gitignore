@@ -6,3 +6,9 @@ __pycache__/
 .idea/
 .vscode/
 *.log
+checkpoints/
+results/
+data/**/*.mat
+data/**/*.xls
+data/**/*.xlsx
+data/**/*.zip

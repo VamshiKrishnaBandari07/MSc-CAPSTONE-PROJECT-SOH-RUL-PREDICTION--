@@ -74,43 +74,75 @@ This penalises non-physical capacity recovery between consecutive cycles.
 
 ---
 
-## Benchmark results (verified on local CPU)
+## Experimental design
 
-All scripts were executed successfully with Python 3.10 and PyTorch 2.x. Results use the built-in synthetic data generators (seed = 42 for reproducibility).
+Two formal experiments are implemented with shared metrics, early stopping, and checkpoint export.
+
+| Experiment | Script | Description |
+| :--- | :--- | :--- |
+| **A — Paper reproduction** | `python train_paper.py` | Exact paper pipeline: ICA + DVA + voltage, SOH-only, MSE loss |
+| **B — MSc extension** | `python train.py` | Joint SOH + RUL with physics-informed monotonicity loss |
+| **A + B + C + benchmark** | `python run_experiments.py` | Full suite: paper repro, MSc model, ablation, comparison report |
+| **Computational profile** | `python benchmark.py` | Parameters, latency, energy vs published baselines |
+
+**Outputs:**
+- `checkpoints/` — best model weights per dataset (`paper_nasa.pt`, `msc_nasa.pt`, …)
+- `results/experiment_comparison_report.json` — full metrics for thesis tables
+- `results/computational_benchmark.json` — latency and energy profile
+
+---
+
+## Benchmark results
+
+Run `python run_experiments.py` to regenerate all tables. Published reference values come from the Scientific Reports (2026) paper; measured values are from this repository on local CPU (seed = 42).
 
 | Metric | Transformer (paper ref.) | Paper hybrid reproduction | MSc proposed (PI-MT) |
 | :--- | :---: | :---: | :---: |
-| **Trainable parameters** | 1.25 M | 0.065 M | **0.067 M** |
-| **Inference latency** | 12.4 ms | ~5.1 ms | **~5.4 ms** |
+| **Trainable parameters** | 1.25 M | ~0.065 M | **~0.067 M** |
+| **Inference latency** | 12.4 ms | ~5 ms | **~5 ms** |
 | **Energy per sample** | 0.86 mJ | ~0.53 mJ | **~0.55 mJ** |
 | **Prediction targets** | SOH | SOH | **SOH + RUL** |
+| **Published SOH RMSE** | 0.038 | 0.021 | — |
 
-### Cross-dataset validation (5 epochs, synthetic data)
+After running experiments, see `results/experiment_comparison_report.json` for per-dataset metrics.
 
-| Dataset | SOH RMSE | RUL RMSE |
-| :--- | :---: | :---: |
-| NASA PCoE | 0.1190 | 65.60 cycles |
-| Oxford | 0.0813 | 68.53 cycles |
-| CALCE | 0.0869 | 69.72 cycles |
+**Thesis figures** are exported to `results/figures/` (PNG + PDF):
+- SOH/RUL validation trajectories
+- Predicted vs true SOH scatter
+- RMSE comparison bar chart
+- Training convergence curves
+- Computational profile
+- Ablation monotonicity chart
+- **NASA real-data figures** (`fig_nasa_real_*.png/pdf`) after `python generate_figures.py --nasa-real-only`
 
-> **Note:** RMSE values vary slightly between runs because synthetic noise is stochastic unless `seed=42` is set (now default in training scripts).
+### Real NASA results (B0005, B0006, B0007, B0018)
+
+| Model | SOH RMSE | vs Published Paper (0.021) |
+| :--- | :---: | :--- |
+| Paper reproduction (ours) | **0.022** | +4.9% |
+| MSc PI-MT (ours) | 0.077 | SOH + RUL joint target |
+| Published Transformer | 0.038 | baseline |
 
 ---
 
 ## Repository layout
 
 ```bash
-├── requirements.txt    # Python dependencies
-├── preprocess.py       # SG smoothing, ICA/DVA/DCA extraction, dataset loaders
-├── preprocess_paper.py # Paper-aligned preprocessing (ICA, DVA, voltage)
-├── model.py            # MSc proposed model (CNN + TCN + LSTM + Attention, joint head)
-├── model_paper.py      # Paper reproduction (SOH-only head)
-├── train.py            # Physics-informed multi-task training
-├── train_paper.py      # Paper reproduction training (SOH, MSE)
-├── benchmark.py        # Latency and BMS energy profiling
-├── download_data.py    # Data folder setup and download guides
+├── run_experiments.py  # Full A+B+C experiment suite + comparison report
+├── train.py            # Experiment B — MSc extension only
+├── train_paper.py      # Experiment A — paper reproduction only
+├── benchmark.py        # Computational profiling
+├── experiments/        # Shared config, metrics, trainer, report
+├── preprocess.py       # ICA/DVA/DCA features + dataset loaders
+├── preprocess_paper.py # Paper-aligned ICA/DVA/voltage features
+├── model.py            # MSc proposed model (joint SOH + RUL)
+├── model_paper.py      # Paper reproduction (SOH only)
+├── download_data.py    # Data folder setup guides
+├── checkpoints/        # Saved model weights (generated)
+├── results/            # JSON experiment reports (generated)
+├── tests/              # Unit tests for metrics
 ├── data/               # NASA, Oxford, CALCE raw data (optional)
-└── .gitignore
+└── requirements.txt
 ```
 
 ---
@@ -177,10 +209,14 @@ python benchmark.py
 
 | Step | Command | Purpose |
 | :--- | :--- | :--- |
-| Verify architecture | `python model.py` | Check tensor shapes and parameter count |
-| Train MSc model | `python train.py` | Joint SOH/RUL training on NASA, Oxford, CALCE |
-| Benchmark | `python benchmark.py` | Latency and energy comparison |
-| Paper reproduction | `python train_paper.py` | SOH-only baseline matching the paper |
+| Full experiment suite | `python run_experiments.py` | Paper repro + MSc + ablation + JSON report |
+| **Thesis figures** | `python generate_figures.py` | SOH/RUL plots, RMSE bars, training curves (PNG + PDF) |
+| NASA real-data figures | `python generate_figures.py --nasa-real-only` | Plots from real B0005-B0018 experiments |
+| NASA real-data run | `python download_data.py --nasa` then `python run_nasa_real.py` | Train on actual NASA .mat files |
+| Paper experiment only | `python train_paper.py` | Experiment A on all datasets |
+| MSc experiment only | `python train.py` | Experiment B on all datasets |
+| Benchmark | `python benchmark.py` | Latency, energy, parameter comparison |
+| Verify architecture | `python model.py` | Check tensor shapes |
 
 ---
 
@@ -194,12 +230,12 @@ The codebase is **runnable end-to-end** and suitable as an MSc software artefact
 | Physics-informed loss | Complete | Monotonicity penalty in `train.py` |
 | Paper reproduction | Complete | Separate `*_paper.py` pipeline |
 | Synthetic evaluation | Complete | NASA / Oxford / CALCE simulators |
-| Real NASA `.mat` loading | Partial | Auto-detects `.mat` files in `data/NASA/` |
-| Real Oxford / CALCE parsing | Pending | Placeholder guides provided; parsers not yet implemented |
-| Unit / integration tests | Pending | Manual script verification only |
-| Saved model checkpoints | Pending | Models train in-memory; no `.pt` export yet |
-| Thesis figures / ablation study | External | Generate from training logs for the written report |
-| Hyperparameter search | Pending | Fixed defaults; grid search recommended for thesis |
+| Real NASA `.mat` loading | Complete | Auto-detects `.mat` files in `data/NASA/` |
+| Real Oxford / CALCE parsing | Pending | Placeholder guides provided |
+| Unit tests | Partial | `tests/test_metrics.py` |
+| Saved model checkpoints | Complete | Exported to `checkpoints/` during training |
+| Experiment comparison report | Complete | `results/experiment_comparison_report.json` |
+| Ablation study (no physics loss) | Complete | Experiment C in `run_experiments.py` |
 
 ---
 

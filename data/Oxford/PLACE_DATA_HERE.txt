@@ -1,7 +1,5 @@
 === OXFORD BATTERY DEGRADATION DATASET GUIDE ===
 
-Official Download Portal: https://ora.ox.ac.uk/objects/uuid:03ba4b01-7ed5-4da1-a1c9-cd3e54b6555c
+Official: https://ora.ox.ac.uk/objects/uuid:03ba4b01-7ed5-4da1-a1c9-cd3e54b6555c
 
-Expected Files:
-- Cell1.mat, Cell2.mat, Cell3.mat, etc.
-Extract all raw cycle mat/csv data directly into this directory (data/Oxford/).
+Extract raw cycle data into this directory (data/Oxford/).

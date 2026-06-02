@@ -206,7 +206,7 @@ class BatteryHealthPredictor(nn.Module):
         # --- 5. Joint Regressors ---
         # soh:             [B, 1]
         # rul:             [B, 1]
-        soh = self.soh_head(context)
+        soh = torch.sigmoid(self.soh_head(context))
         rul = self.rul_head(context)
         
         return soh, rul, attn_weights

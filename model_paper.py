@@ -158,7 +158,7 @@ class BatterySOHPredictorPaper(nn.Module):
         out = self.fc1(context)
         out = self.relu(out)
         out = self.fc_dropout(out)
-        soh = self.fc2(out)
+        soh = torch.sigmoid(self.fc2(out))
         
         return soh, attn_weights
 

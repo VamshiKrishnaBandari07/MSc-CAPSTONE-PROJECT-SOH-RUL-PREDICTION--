@@ -5,6 +5,8 @@ import numpy as np
 import scipy.io
 import scipy.signal as signal
 
+from experiments.data import generate_shared_labels
+
 RANDOM_SEED = 42
 
 def smooth_curve(y, window_length=15, polyorder=3):
@@ -83,69 +85,42 @@ def calculate_ic_dv_curves(voltage, capacity, current=None):
     
     return dq_dv_aligned, dv_dq_aligned, di_dv_aligned
 
-def _load_nasa_mat_files(data_dir, seq_len=100):
-    """
-    Parses NASA PCoE .mat files (e.g. B0005.mat) when placed in data/NASA/.
-    Extracts charge cycles and computes ICA/DVA/DCA features with SOH/RUL labels.
-    """
-    mat_files = sorted(glob.glob(os.path.join(data_dir, "*.mat")))
-    if not mat_files:
-        return None
+from experiments.nasa_loader import iter_nasa_discharge_cycles
 
+
+def _align_sequence(values, seq_len):
+    if len(values) > seq_len:
+        idx = np.linspace(0, len(values) - 1, seq_len, dtype=int)
+        return values[idx]
+    if len(values) < seq_len:
+        return np.interp(np.linspace(0, 1, seq_len), np.linspace(0, 1, len(values)), values)
+    return values
+
+
+def _load_nasa_mat_files(data_dir, seq_len=100):
+    """Parse NASA PCoE B*.mat discharge cycles into ICA/DVA/DCA features."""
     all_features, all_soh = [], []
     eol_threshold = 0.70
 
-    for mat_path in mat_files:
-        mat = scipy.io.loadmat(mat_path)
-        if "cycle" not in mat:
-            continue
-
-        cycles = mat["cycle"][0]
-        initial_capacity = None
-
-        for cycle in cycles:
-            cycle_type = str(cycle["type"][0]).lower() if "type" in cycle.dtype.names else ""
-            if cycle_type and "charge" not in cycle_type:
-                continue
-
-            data = cycle["data"][0, 0]
-            voltage = np.asarray(data["Voltage_measured"][0], dtype=np.float64).flatten()
-            current = np.asarray(data["Current_measured"][0], dtype=np.float64).flatten()
-            capacity = np.asarray(data["Capacity"][0], dtype=np.float64).flatten()
-
-            if len(voltage) < 10:
-                continue
-
-            if len(capacity) != len(voltage):
-                capacity = np.linspace(0, np.max(np.abs(current)) * len(voltage) / 3600.0, len(voltage))
-
-            peak_cap = float(np.max(capacity))
-            if initial_capacity is None:
-                initial_capacity = peak_cap
-            if initial_capacity <= 0:
-                continue
-
-            soh = peak_cap / initial_capacity
-            ica, dva, dca = calculate_ic_dv_curves(voltage, capacity, current)
-
-            if len(ica) > seq_len:
-                idx = np.linspace(0, len(ica) - 1, seq_len, dtype=int)
-                ica, dva, dca = ica[idx], dva[idx], dca[idx]
-            elif len(ica) < seq_len:
-                ica = np.interp(np.linspace(0, 1, seq_len), np.linspace(0, 1, len(ica)), ica)
-                dva = np.interp(np.linspace(0, 1, seq_len), np.linspace(0, 1, len(dva)), dva)
-                dca = np.interp(np.linspace(0, 1, seq_len), np.linspace(0, 1, len(dca)), dca)
-
-            all_features.append(np.stack([ica, dva, dca], axis=0))
-            all_soh.append(soh)
+    for voltage, current, capacity_profile, soh in iter_nasa_discharge_cycles(data_dir):
+        ica, dva, dca = calculate_ic_dv_curves(voltage, capacity_profile, current)
+        ica = _align_sequence(ica, seq_len)
+        dva = _align_sequence(dva, seq_len)
+        dca = _align_sequence(dca, seq_len)
+        all_features.append(np.stack([ica, dva, dca], axis=0))
+        all_soh.append(soh)
 
     if not all_features:
         return None
 
     all_soh = np.array(all_soh, dtype=np.float32)
-    eol_cycle = next((i for i, s in enumerate(all_soh) if s <= eol_threshold), len(all_soh))
-    all_rul = np.array([max(0, eol_cycle - i) for i in range(len(all_soh))], dtype=np.float32)
+    valid = np.isfinite(all_soh)
+    if not np.all(valid):
+        all_features = [f for f, ok in zip(all_features, valid) if ok]
+        all_soh = all_soh[valid]
 
+    eol_idx = next((i for i, s in enumerate(all_soh) if s <= eol_threshold), len(all_soh))
+    all_rul = np.array([max(0, eol_idx - i) for i in range(len(all_soh))], dtype=np.float32)
     return np.array(all_features, dtype=np.float32), all_soh, all_rul
 
 def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len=100):
@@ -160,74 +135,40 @@ def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len
     - rul_values: [num_cycles]
     """
     data = []
-    soh_values = []
-    rul_values = []
     
-    # Calibrate based on dataset specifications
     if dataset_name == "NASA":
-        # NASA PCoE: LiCoO2 cells, capacity fade from 2.0 Ah to 1.4 Ah (EOL at 1.4 Ah / 70% SOH)
         nominal_cap = 2.0
-        eol_threshold = 0.70
         noise_level = 0.008
-        capacity_fade_rate = 0.28
     elif dataset_name == "Oxford":
-        # Oxford: LCO/NMC cells, small pouch 740mAh capacity, faster fading
         nominal_cap = 0.74
-        eol_threshold = 0.80
         noise_level = 0.005
-        capacity_fade_rate = 0.20
-    else:  # CALCE
-        # CALCE: LFP/LCO pouch, capacity fade from 1.1 Ah to 0.8 Ah (EOL at 0.8 Ah / 72.7% SOH)
+    else:
         nominal_cap = 1.1
-        eol_threshold = 0.75
         noise_level = 0.010
-        capacity_fade_rate = 0.25
-        
+
+    soh_array, rul_array, _ = generate_shared_labels(dataset_name, num_cycles)
     rng = np.random.default_rng(RANDOM_SEED + hash(dataset_name) % 1000)
-    base_v = np.linspace(3.2, 4.2, seq_len) # standard charging voltage sweep
-    
+    base_v = np.linspace(3.2, 4.2, seq_len)
+
     for cycle in range(num_cycles):
-        # 1. State of Health decreases non-linearly over cycles, with minor capacity recovery steps
-        # We simulate the capacity fade curve with a double-exponential degradation function + recovery steps
-        degrad = capacity_fade_rate * (cycle / num_cycles)**1.3 + 0.05 * (cycle / num_cycles)
-        # Bounded capacity recovery during rest periods (sudden upward bump in SOH)
-        recovery = 0.015 * np.sin(cycle / 5.0) if cycle % 12 == 0 else 0.0
-        
-        soh = 1.0 - degrad + recovery
-        soh = np.clip(soh, 0.4, 1.0)
-        soh_values.append(soh)
-        
-        # 2. Remaining Useful Life (RUL) estimation in cycles
-        # RUL is the number of cycles remaining until SOH hits the EOL threshold
-        # Find where SOH would hit eol_threshold
-        eol_cycle = int(num_cycles * ((1.0 - eol_threshold) / capacity_fade_rate)**(1.0/1.3))
-        remaining = max(0, eol_cycle - cycle)
-        rul_values.append(remaining)
-        
-        # 3. Features profile synthesis
+        soh = float(soh_array[cycle])
         current_cap = nominal_cap * soh
-        
-        # Generate raw voltage & capacity curves
-        # Incremental Capacity (ICA) curves shift downwards and to the left (lower voltage peaks) as battery ages
         peak_shift = 0.15 * (1.0 - soh)
         base_q = current_cap * (1.0 / (1.0 + np.exp(-12 * (base_v - 3.65 + peak_shift))))
-        
-        # Add random sensor noise
+
         raw_v = base_v + rng.normal(0, 0.006, seq_len)
         raw_q = base_q + rng.normal(0, noise_level, seq_len)
-        
-        # Constant charging current with slight noise
         raw_i = np.ones_like(raw_v) * 1.5 + rng.normal(0, 0.01, seq_len)
-        
-        # Calculate features (dQ/dV, dV/dQ, dI/dV)
+
         ica, dva, dca = calculate_ic_dv_curves(raw_v, raw_q, raw_i)
-        
         cycle_features = np.stack([ica, dva, dca], axis=0)
         data.append(cycle_features)
-        
-    return (np.array(data, dtype=np.float32), 
-            np.array(soh_values, dtype=np.float32), 
-            np.array(rul_values, dtype=np.float32))
+
+    return (
+        np.array(data, dtype=np.float32),
+        soh_array,
+        rul_array,
+    )
 
 class BatteryDatasetLoader:
     """
@@ -248,7 +189,7 @@ class BatteryDatasetLoader:
                 print(f"[{dataset_name}] Loaded {len(nasa_data[0])} cycles from NASA .mat files.")
                 return nasa_data
 
-        if os.path.isdir(raw_path) and any(
+        if os.path.isdir(raw_path) and dataset_name != "NASA" and any(
             f.lower().endswith((".mat", ".csv", ".xls", ".xlsx"))
             for f in os.listdir(raw_path)
         ):

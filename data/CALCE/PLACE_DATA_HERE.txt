@@ -1,7 +1,5 @@
 === CALCE BATTERY DATASET GUIDE ===
 
-Official Download Portal: https://calce.umd.edu/battery-data
+Official: https://calce.umd.edu/battery-data
 
-Expected Files:
-- CS2_35.xls / CS2_36.xls / CS2_37.xls / CS2_38.xls
-Place the cell testing sheets directly in this directory (data/CALCE/).
+Place CS2_*.xls files in this directory (data/CALCE/).
