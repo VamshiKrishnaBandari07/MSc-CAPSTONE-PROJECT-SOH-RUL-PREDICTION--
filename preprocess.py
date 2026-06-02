@@ -1,5 +1,11 @@
+import glob
+import os
+
 import numpy as np
+import scipy.io
 import scipy.signal as signal
+
+RANDOM_SEED = 42
 
 def smooth_curve(y, window_length=15, polyorder=3):
     """
@@ -77,6 +83,71 @@ def calculate_ic_dv_curves(voltage, capacity, current=None):
     
     return dq_dv_aligned, dv_dq_aligned, di_dv_aligned
 
+def _load_nasa_mat_files(data_dir, seq_len=100):
+    """
+    Parses NASA PCoE .mat files (e.g. B0005.mat) when placed in data/NASA/.
+    Extracts charge cycles and computes ICA/DVA/DCA features with SOH/RUL labels.
+    """
+    mat_files = sorted(glob.glob(os.path.join(data_dir, "*.mat")))
+    if not mat_files:
+        return None
+
+    all_features, all_soh = [], []
+    eol_threshold = 0.70
+
+    for mat_path in mat_files:
+        mat = scipy.io.loadmat(mat_path)
+        if "cycle" not in mat:
+            continue
+
+        cycles = mat["cycle"][0]
+        initial_capacity = None
+
+        for cycle in cycles:
+            cycle_type = str(cycle["type"][0]).lower() if "type" in cycle.dtype.names else ""
+            if cycle_type and "charge" not in cycle_type:
+                continue
+
+            data = cycle["data"][0, 0]
+            voltage = np.asarray(data["Voltage_measured"][0], dtype=np.float64).flatten()
+            current = np.asarray(data["Current_measured"][0], dtype=np.float64).flatten()
+            capacity = np.asarray(data["Capacity"][0], dtype=np.float64).flatten()
+
+            if len(voltage) < 10:
+                continue
+
+            if len(capacity) != len(voltage):
+                capacity = np.linspace(0, np.max(np.abs(current)) * len(voltage) / 3600.0, len(voltage))
+
+            peak_cap = float(np.max(capacity))
+            if initial_capacity is None:
+                initial_capacity = peak_cap
+            if initial_capacity <= 0:
+                continue
+
+            soh = peak_cap / initial_capacity
+            ica, dva, dca = calculate_ic_dv_curves(voltage, capacity, current)
+
+            if len(ica) > seq_len:
+                idx = np.linspace(0, len(ica) - 1, seq_len, dtype=int)
+                ica, dva, dca = ica[idx], dva[idx], dca[idx]
+            elif len(ica) < seq_len:
+                ica = np.interp(np.linspace(0, 1, seq_len), np.linspace(0, 1, len(ica)), ica)
+                dva = np.interp(np.linspace(0, 1, seq_len), np.linspace(0, 1, len(dva)), dva)
+                dca = np.interp(np.linspace(0, 1, seq_len), np.linspace(0, 1, len(dca)), dca)
+
+            all_features.append(np.stack([ica, dva, dca], axis=0))
+            all_soh.append(soh)
+
+    if not all_features:
+        return None
+
+    all_soh = np.array(all_soh, dtype=np.float32)
+    eol_cycle = next((i for i, s in enumerate(all_soh) if s <= eol_threshold), len(all_soh))
+    all_rul = np.array([max(0, eol_cycle - i) for i in range(len(all_soh))], dtype=np.float32)
+
+    return np.array(all_features, dtype=np.float32), all_soh, all_rul
+
 def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len=100):
     """
     Generates realistic synthetic charge-discharge cycles representing battery degradation
@@ -112,6 +183,7 @@ def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len
         noise_level = 0.010
         capacity_fade_rate = 0.25
         
+    rng = np.random.default_rng(RANDOM_SEED + hash(dataset_name) % 1000)
     base_v = np.linspace(3.2, 4.2, seq_len) # standard charging voltage sweep
     
     for cycle in range(num_cycles):
@@ -141,11 +213,11 @@ def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len
         base_q = current_cap * (1.0 / (1.0 + np.exp(-12 * (base_v - 3.65 + peak_shift))))
         
         # Add random sensor noise
-        raw_v = base_v + np.random.normal(0, 0.006, seq_len)
-        raw_q = base_q + np.random.normal(0, noise_level, seq_len)
+        raw_v = base_v + rng.normal(0, 0.006, seq_len)
+        raw_q = base_q + rng.normal(0, noise_level, seq_len)
         
         # Constant charging current with slight noise
-        raw_i = np.ones_like(raw_v) * 1.5 + np.random.normal(0, 0.01, seq_len)
+        raw_i = np.ones_like(raw_v) * 1.5 + rng.normal(0, 0.01, seq_len)
         
         # Calculate features (dQ/dV, dV/dQ, dI/dV)
         ica, dva, dca = calculate_ic_dv_curves(raw_v, raw_q, raw_i)
@@ -165,20 +237,27 @@ class BatteryDatasetLoader:
     """
     @staticmethod
     def load_dataset(dataset_name="NASA", raw_path=None, num_cycles=150, seq_len=100):
-        print(f"[{dataset_name} Dataset] Attempting to load from: {raw_path or 'Fallback Synthesizer'}")
-        
-        if raw_path is not None:
-            # Placeholder for loading actual MAT/CSV files for NASA/Oxford/CALCE if provided
-            try:
-                # In a real environment, users can pass raw folder path
-                # e.g., scipy.io.loadmat for NASA .mat files
-                # For this implementation, we log the attempt and execute the high-fidelity fallback.
-                print(f"Loading files from {raw_path}...")
-                # We raise FileNotFoundError to trigger the robust fallback gracefully
-                raise FileNotFoundError()
-            except Exception:
-                print(f"Raw data files not found at '{raw_path}'. Initializing high-fidelity {dataset_name} aging model...")
-                
+        if raw_path is None:
+            raw_path = os.path.join(os.getcwd(), "data", dataset_name)
+
+        print(f"[{dataset_name} Dataset] Attempting to load from: {raw_path}")
+
+        if dataset_name == "NASA" and os.path.isdir(raw_path):
+            nasa_data = _load_nasa_mat_files(raw_path, seq_len=seq_len)
+            if nasa_data is not None:
+                print(f"[{dataset_name}] Loaded {len(nasa_data[0])} cycles from NASA .mat files.")
+                return nasa_data
+
+        if os.path.isdir(raw_path) and any(
+            f.lower().endswith((".mat", ".csv", ".xls", ".xlsx"))
+            for f in os.listdir(raw_path)
+        ):
+            print(
+                f"[{dataset_name}] Raw files detected but parser not yet implemented. "
+                f"Using calibrated synthetic fallback."
+            )
+
+        print(f"[{dataset_name}] Using high-fidelity synthetic aging simulator.")
         return generate_synthetic_battery_data(dataset_name, num_cycles, seq_len)
 
 if __name__ == '__main__':

@@ -1,12 +1,21 @@
+import random
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import numpy as np
 
-# Import components from our scaffolded modules
 from model import BatteryHealthPredictor
-from preprocess import BatteryDatasetLoader
+from preprocess import BatteryDatasetLoader, RANDOM_SEED
+
+
+def set_seed(seed=RANDOM_SEED):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 class BatteryDataset(Dataset):
     """
@@ -172,4 +181,5 @@ def run_cross_validation():
     print("==========================================")
 
 if __name__ == '__main__':
+    set_seed()
     run_cross_validation()

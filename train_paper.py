@@ -1,11 +1,21 @@
+import random
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import numpy as np
 
 from model_paper import BatterySOHPredictorPaper
-from preprocess_paper import generate_paper_synthetic_data
+from preprocess_paper import RANDOM_SEED, generate_paper_synthetic_data
+
+
+def set_seed(seed=RANDOM_SEED):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 class BatteryDatasetPaper(Dataset):
     def __init__(self, features, soh):
@@ -86,4 +96,5 @@ def train_exact_paper_model(epochs=5, batch_size=8):
     return val_rmse, model
 
 if __name__ == '__main__':
+    set_seed()
     train_exact_paper_model(epochs=5, batch_size=8)

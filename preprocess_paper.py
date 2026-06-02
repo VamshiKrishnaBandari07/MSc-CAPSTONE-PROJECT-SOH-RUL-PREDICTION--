@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.signal as signal
 
+RANDOM_SEED = 42
+
 def smooth_curve(y, window_length=15, polyorder=3):
     """
     Savitzky-Golay filtering for denoising raw measurements exactly as described in the paper.
@@ -52,11 +54,11 @@ def generate_paper_synthetic_data(num_cycles=100, seq_len=100):
     data = []
     soh_values = []
     
+    rng = np.random.default_rng(RANDOM_SEED)
     base_v = np.linspace(3.0, 4.2, seq_len)
     
     for cycle in range(num_cycles):
-        # Continuous non-linear SOH degradation
-        soh = 1.0 - 0.25 * (cycle / num_cycles)**1.2 + np.random.normal(0, 0.003)
+        soh = 1.0 - 0.25 * (cycle / num_cycles)**1.2 + rng.normal(0, 0.003)
         soh = np.clip(soh, 0.5, 1.0)
         soh_values.append(soh)
         
@@ -64,8 +66,8 @@ def generate_paper_synthetic_data(num_cycles=100, seq_len=100):
         peak_shift = 0.1 * (1.0 - soh)
         base_q = current_cap * (1.0 / (1.0 + np.exp(-10 * (base_v - 3.6 + peak_shift))))
         
-        raw_v = base_v + np.random.normal(0, 0.005, seq_len)
-        raw_q = base_q + np.random.normal(0, 0.002, seq_len)
+        raw_v = base_v + rng.normal(0, 0.005, seq_len)
+        raw_q = base_q + rng.normal(0, 0.002, seq_len)
         
         ica, dva = calculate_ic_dv_curves_paper(raw_v, raw_q)
         

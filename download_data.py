@@ -84,7 +84,7 @@ def main():
     write_placeholder_guides()
     
     print("\n" + "="*50)
-    print("DATA ACQUISITION GUIDE FOR MC CAPSTONE PROJECT")
+    print("DATA ACQUISITION GUIDE FOR MSc CAPSTONE PROJECT")
     print("="*50)
     print("Because public battery aging datasets are multi-gigabyte files protected by university portals:")
     print("1. Please download the raw files from the official links listed inside `data/<DatasetName>/PLACE_DATA_HERE.txt`.")
