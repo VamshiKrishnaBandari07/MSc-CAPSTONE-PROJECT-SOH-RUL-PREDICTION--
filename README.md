@@ -1,221 +1,316 @@
-# State-of-the-Art Hybrid Deep Learning Framework for Joint Battery SOH & RUL Diagnostics
+# Battery SOH and RUL Diagnostics with Paper-First Reproduction Workflow
 
-[![Nature Scientific Reports](https://img.shields.io/badge/Nature-Scientific%20Reports-green.svg)](https://www.nature.com/articles/s41598-026-39911-8)
-[![Academic Level](https://img.shields.io/badge/Degree-Master%20of%20Science%20%28MSc%29-blue.svg)]()
-[![Framework](https://img.shields.io/badge/Deep%20Learning-PyTorch%20%2F%20SciPy-orange.svg)]()
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)]()
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange.svg)]()
+[![Paper](https://img.shields.io/badge/Scientific%20Reports-10.1038%2Fs41598--026--39911--8-green.svg)](https://www.nature.com/articles/s41598-026-39911-8)
 
-This repository contains the full implementation of the state-of-the-art hybrid deep learning framework for intelligent Battery Management Systems (BMS) in electric vehicles (EVs). It is inspired by the Nature Portfolio *Scientific Reports* (2026) paper: **"Deep learning-based battery health prediction for enhancing electric vehicle performance"** (DOI: 10.1038/s41598-026-39911-8).
+This repository is an MSc Artificial Intelligence capstone project for electric-vehicle battery diagnostics. It contains:
 
-To bridge the gap between pure data-driven approaches and electrochemical reality, this implementation extends the paper's design with a custom **Physics-Informed Joint Regularization** layer that enforces capacity monotonicity, representing an **MSc Thesis Research Capstone Contribution**.
+1. a **paper-aligned SOH reproduction workflow** in `paper_exp/`;
+2. the repository's **modified MSc contribution**: joint State-of-Health (SOH) and Remaining Useful Life (RUL) prediction with a physics-informed monotonicity term; and
+3. a **comparison workflow** that runs the paper experiment first, then the modified experiment, then writes JSON and Markdown reports.
+
+The repository should be read as an **engineering reproduction and extension** of the referenced Scientific Reports article, not as a guaranteed replication of the paper's published metrics from a fresh clone. The paper-level result claims require the real datasets, the full training schedule, hardware details, and generated artefacts.
 
 ---
 
-## ⚡ Key Architectural Features
+## Referenced paper
 
-The framework is structured to process multi-domain electrochemical health indicators through a specialized deep sequence learning network:
+> Deep learning-based battery health prediction for enhancing electric vehicle performance.  
+> Scientific Reports. DOI: `10.1038/s41598-026-39911-8`
+
+Reported paper targets used for comparison:
+
+| Metric | Paper reported value |
+| --- | ---: |
+| SOH RMSE | `0.021` |
+| SOH R2 | `0.983` |
+| Parameters | `~0.35M` |
+| Latency | `6.1 ms/sample` |
+| Energy | `0.63 mJ/sample` |
+
+---
+
+## Repository structure
+
+```text
+.
+├── README.md
+├── requirements.txt
+├── docs/
+│   └── AUDIT_REPORT.md
+├── data/
+│   ├── NASA/PLACE_DATA_HERE.txt
+│   ├── Oxford/PLACE_DATA_HERE.txt
+│   ├── CALCE/PLACE_DATA_HERE.txt
+│   └── KaggleSDG7/PLACE_DATA_HERE.txt
+├── paper_exp/
+│   ├── config.py
+│   ├── model.py
+│   ├── preprocess.py
+│   ├── prepare_data.py
+│   ├── train.py
+│   ├── modified_experiment.py
+│   ├── compare_results.py
+│   ├── run_comparison.py
+│   └── README.md
+├── model.py                  # modified MSc joint SOH/RUL model
+├── train.py                  # modified MSc training loop
+├── preprocess.py             # synthetic fallback preprocessing for legacy scripts
+├── benchmark.py
+├── model_paper.py            # legacy paper-style demo
+├── preprocess_paper.py       # legacy paper-style demo
+└── train_paper.py            # legacy paper-style demo
+```
+
+`paper_exp/` is the canonical paper-first workflow. The root `*_paper.py` files are retained as lightweight legacy demonstrations and should not be treated as the primary paper reproduction.
+
+Generated outputs are ignored by git:
+
+```text
+paper_exp/outputs/
+data/processed/*.npz
+data/KaggleSDG7/*
+```
+
+---
+
+## Architecture
+
+### Paper-aligned SOH pipeline
 
 ```mermaid
-graph TD
-    Raw[Raw Charging Data: V, I, Q] --> Pre[Savitzky-Golay Smoothing & Derivatives]
-    Pre --> Features[Multi-Domain Profiles: dQ/dV, dV/dQ, dI/dV]
-    Features --> CNN[1D-CNN: Local Spatial Peak Extraction]
-    CNN --> TCN[Temporal Convolutional Network: Dilated Causal Dynamics]
-    TCN --> LSTM[LSTM: Long-Horizon Cycle Aging Tracking]
-    LSTM --> Attn[Self-Attention: Aging Plateau Alignment]
-    Attn --> JointHead[Joint Prediction Head]
-    JointHead --> SOH[State of Health SOH Output]
-    JointHead --> RUL[Remaining Useful Life RUL Output]
+flowchart LR
+    A[Raw cycle data<br/>Voltage, Current, Capacity] --> B[Savitzky-Golay smoothing]
+    B --> C[Feature extraction<br/>ICA dQ/dV<br/>DV dV/dQ<br/>DC dI/dV]
+    C --> D[Voltage-grid alignment]
+    D --> E[1D CNN]
+    E --> F[Temporal Convolutional Network]
+    F --> G[LSTM]
+    G --> H[Additive attention]
+    H --> I[SOH regression head]
 ```
 
-### 1. Multi-Domain Feature Extraction
-Instead of passing raw time-series directly into the neural network, the raw charging curves (Voltage $V$, Current $I$, and Capacity $Q$) are filtered via **Savitzky-Golay smoothing** and transformed into physical derivative curves:
-* **Incremental Capacity Analysis (ICA, $dQ/dV$):** Resolves chemical phase transitions and peak shifts.
-* **Differential Voltage (DVA, $dV/dQ$):** Highlights anode/cathode peak alignment and active material loss.
-* **Differential Current (DCA, $dI/dV$):** Tracks charging rate limits and lithium plating tendencies.
+### Modified MSc contribution
 
-### 2. Hybrid Sequence Learning Layers
-* **1D-CNN Layer:** Captures local peak distortions, height changes, and shift widths from individual charge cycles.
-* **Dilated Causal TCN Blocks:** Models medium-term causal degradation dynamics across consecutive cycles without future data leakage.
-* **LSTM Layer:** Tracks long-horizon, cycle-to-cycle capacity fading trends over hundreds of cycles.
-* **Self-Attention Mechanism:** Automatically weights and aligns the most critical degradation states and plateaus to form a unified context vector.
+```mermaid
+flowchart LR
+    A[DV/DC/ICA cycle features] --> B[1D CNN + TCN + LSTM + Attention]
+    B --> C[SOH head]
+    B --> D[RUL head]
+    C --> E[SOH MSE]
+    D --> F[RUL MSE]
+    C --> G[Monotonicity penalty]
+    E --> H[Joint physics-informed loss]
+    F --> H
+    G --> H
+```
 
-### 3. Joint Multi-Task Prediction Head
-The model features separate regression pathways branching from the attention context:
-1. **SOH Estimator:** Predicts current battery capacity ratio ($0.0$ to $1.0$).
-2. **RUL Estimator:** Computes the remaining useful life in cycles until the EOL threshold is hit.
+The modified objective is:
 
----
+```math
+\mathcal{L}_{total}
+= \mathcal{L}_{SOH}
++ \alpha \mathcal{L}_{RUL}
++ \gamma \mathcal{L}_{mono}
+```
 
-## 🔒 Physics-Informed Joint Loss
-
-Standard data-driven models suffer from overfitting and often predict impossible capacity increases during resting. This project enforces electrochemical monotonicity using a custom multi-objective loss function:
-
-$$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{SOH}} + \alpha \mathcal{L}_{\text{RUL}} + \gamma \mathcal{L}_{\text{monotonicity}}$$
-
-Where:
-* **SOH Fidelity:** $\mathcal{L}_{\text{SOH}} = \text{MSE}(\hat{y}_{\text{SOH}}, y_{\text{SOH}})$
-* **RUL Fidelity:** $\mathcal{L}_{\text{RUL}} = \text{MSE}(\hat{y}_{\text{RUL}}, y_{\text{RUL}})$
-* **Physics-Informed Monotonicity Penalty:** $\mathcal{L}_{\text{monotonicity}} = \frac{1}{N-1} \sum_{t=1}^{N-1} \max(0, \hat{y}_{\text{SOH}}[t] - \hat{y}_{\text{SOH}}[t-1])$
-
-Whenever the model predicts a capacity increase from cycle $t-1$ to cycle $t$, the monotonicity penalty activates, constraining SOH to a physically sound, non-increasing trajectory.
+where the monotonicity term penalises predicted SOH increases across adjacent cycle predictions.
 
 ---
 
-## 📈 Quantitative Benchmark Report
+## Installation
 
-We evaluated the performance of our optimized framework against the paper's original metrics and the baseline Transformer model. Profiled on standard CPU hardware:
-
-| Metric | Transformer Baseline | In-Paper Hybrid Model | Ours (Optimized Framework) |
-| :--- | :---: | :---: | :---: |
-| **Trainable Parameters** | $1.25\text{ M}$ | $0.35\text{ M}$ | **$0.067\text{ M}$** *(80.8% reduction)* |
-| **Inference Latency** | $12.4\text{ ms}$ | $6.1\text{ ms}$ | **$2.38\text{ ms}$** *(80.8% faster than Transformer)* |
-| **Computational Energy** | $0.86\text{ mJ}$ | $0.63\text{ mJ}$ | **$0.25\text{ mJ}$** *(70.9% more efficient than paper)* |
-| **Best Val SOH RMSE** | $0.038$ | $0.021$ | **$0.020 - 0.081$** *(High-fidelity accuracy)* |
-
-### Validation Trajectory Results (5 Epochs)
-* **NASA PCoE Dataset:** SOH RMSE = **0.1190** | RUL RMSE = **65.60 cycles**
-* **Oxford Dataset:** SOH RMSE = **0.0813** | RUL RMSE = **68.53 cycles**
-* **CALCE Dataset:** SOH RMSE = **0.0869** | RUL RMSE = **69.72 cycles**
-
----
-
-## 📂 Repository File Layout
+### 1. Clone and create an environment
 
 ```bash
-├── requirements.txt   # Python package dependencies
-├── preprocess.py      # SG smoothing, dQ/dV, dV/dQ, dI/dV extraction, NASA/Oxford/CALCE simulators
-├── preprocess_paper.py # Paper-aligned preprocessing & synthetic data
-├── paper_exp/         # Full paper reproduction experiment package and data converter
-├── model.py           # PyTorch implementation of the 1D-CNN + TCN + LSTM + Attention model
-├── model_paper.py     # Exact paper reproduction (SOH-only head)
-├── train.py           # Physics-informed multi-task training loop & cross-validation
-├── train_paper.py     # Exact paper training pipeline (SOH, MSE loss)
-├── download_data.py   # Creates data/ folders and download placement guides
-├── benchmark.py       # Latency profiling & BMS energy usage calculator
-├── data/              # NASA, Oxford, CALCE raw datasets (optional; synthetic fallback built-in)
-└── .gitignore         # Ignores cache and intermediate python binary files
+git clone <repository-url>
+cd <repository-folder>
+
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
----
-
-## 🛠 Setup
-
-### Prerequisites
-
-- **Python 3.9+** (3.10 or 3.11 recommended)
-- **pip** (included with Python)
-- Optional: **NVIDIA GPU + CUDA** for faster training (CPU works out of the box)
-
-### 1. Clone the repository
-
-```bash
-git clone <your-repo-url>
-cd "battery SOH predications"
-```
-
-### 2. Create a virtual environment (recommended)
-
-**Windows (PowerShell):**
+On Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-**macOS / Linux:**
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
+### 2. Install dependencies
 
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-For **GPU acceleration**, install PyTorch with CUDA from the [official PyTorch install guide](https://pytorch.org/get-started/locally/) instead of the default CPU wheel, then install the rest:
+For CUDA acceleration, install a CUDA-compatible PyTorch wheel from the official PyTorch instructions before running the experiments.
+
+### 3. Verify the installation
 
 ```bash
-pip install numpy scipy
-```
-
-### 4. Prepare data directories (optional)
-
-Training uses built-in synthetic data when real files are missing. To use NASA, Oxford, or CALCE datasets:
-
-```bash
-python download_data.py
-```
-
-Follow the links in `data/<DatasetName>/PLACE_DATA_HERE.txt`, download the raw files, and place them in the matching folder.
-
-### 5. Verify the installation
-
-```bash
-python model.py
-python preprocess.py
+python3 -m paper_exp.model
+python3 -m paper_exp.preprocess
+python3 -m paper_exp.train --smoke
 ```
 
 ---
 
-## 🚀 Execution & Quick Start
+## Data preparation
 
-### 1. Verify Model Architecture & Activation Dimensions
-Ensure the spatial and temporal shapes of all activations align correctly:
+### Supported sources
+
+| Source | Folder | Notes |
+| --- | --- | --- |
+| NASA PCoE battery data | `data/NASA/` | Raw `.mat` files such as `B0005.mat` |
+| Oxford Battery Degradation dataset | `data/Oxford/` | Raw `.mat` files |
+| CALCE battery data | `data/CALCE/` | CSV/XLS/XLSX files |
+| Kaggle SDG 7 dataset | `data/KaggleSDG7/` | User-provided Kaggle source |
+
+Create placement guides:
+
 ```bash
-python model.py
+python3 download_data.py
 ```
 
-### 2. Run Cross-Validation on Target Databases
-Compile and train the model with the physics-informed joint loss function:
-```bash
-python train.py
+### Kaggle SDG 7 dataset
+
+Dataset URL:
+
+```text
+https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7
 ```
 
-### 3. Run High-Precision Latency & Energy Benchmark
-Profile latency (ms) and micro-BMS energy consumption (mJ) to compare against baseline architectures:
+Automatic download, if Kaggle allows access in your environment:
+
 ```bash
-python benchmark.py
+python3 -m paper_exp.prepare_data \
+  --download-kaggle \
+  --datasets KaggleSDG7 \
+  --raw-dir data \
+  --output-dir data/processed \
+  --seq-len 128
 ```
 
-### 4. Train the exact paper reproduction (SOH only)
+Manual download:
+
 ```bash
-python train_paper.py
+# Extract the Kaggle ZIP into data/KaggleSDG7/
+python3 -m paper_exp.prepare_data \
+  --datasets KaggleSDG7 \
+  --raw-dir data \
+  --output-dir data/processed \
+  --seq-len 128
 ```
 
-### 5. Run the full paper experiment and comparison suite
-The `paper_exp/` folder is the clean paper-first workflow:
+The converter creates:
 
-1. Prepare the real dataset.
-2. Run the paper-aligned SOH-only experiment.
-3. Run the existing modified/thesis SOH+RUL experiment.
-4. Generate JSON and Markdown comparison reports.
+```text
+data/processed/KaggleSDG7_paper_exp.npz
+```
+
+Each processed file contains:
+
+- `features`: `[cycles, 3, seq_len]`
+- `soh`: `[cycles]`
+- optional `dataset_names`, `cell_ids`, `cycle_indices`
+
+---
+
+## Reproducible workflows
+
+### Quick smoke check from a fresh clone
+
+If no processed Kaggle file exists, smoke mode creates a tiny demo dataset under the selected output folder.
 
 ```bash
-# Quick verification
-python3 -m paper_exp.run_comparison --smoke --raw-dir data --paper-datasets KaggleSDG7
+python3 -m paper_exp.run_comparison \
+  --smoke \
+  --raw-dir data \
+  --paper-datasets KaggleSDG7 \
+  --output-dir paper_exp/outputs/workflow_smoke
+```
 
-# Full paper-first suite with the user-provided Kaggle dataset
-python3 -m paper_exp.prepare_data --download-kaggle --datasets KaggleSDG7 --raw-dir data --output-dir data/processed --seq-len 128
+### Paper-first comparison suite
+
+```bash
 python3 -m paper_exp.run_comparison \
   --raw-dir data \
   --paper-datasets KaggleSDG7 \
   --modified-datasets NASA Oxford CALCE \
   --paper-epochs 300 \
+  --paper-folds 5 \
+  --paper-seq-len 128 \
   --modified-epochs 5
 ```
 
-The generated comparison is saved at:
+This executes:
+
+1. `paper_exp.train` - paper-aligned SOH-only experiment;
+2. `paper_exp.modified_experiment` - existing modified SOH/RUL experiment using root `train.py`; and
+3. `paper_exp.compare_results` - report generation.
+
+Outputs:
 
 ```text
-paper_exp/outputs/full_comparison/03_comparison/comparison.md
+paper_exp/outputs/full_comparison/
+├── 01_paper_experiment/metrics.json
+├── 02_modified_experiment/metrics.json
+├── 03_comparison/comparison.json
+├── 03_comparison/comparison.md
+└── logs/
 ```
 
-Place NASA/Oxford/CALCE raw files under `data/NASA`, `data/Oxford`, and
-`data/CALCE` when you want to use those paper-mentioned sources. For the Kaggle
-dataset, download or extract files from `https://www.kaggle.com/datasets/drtawfikrrahman/deep-learning-ev-battery-pack-diagnostics-sdg-7`
-under `data/KaggleSDG7`, or use `paper_exp.prepare_data --download-kaggle`.
-See `paper_exp/README.md` for the detailed file format and workflow.
+### Individual commands
+
+Run only the paper experiment:
+
+```bash
+python3 -m paper_exp.train \
+  --datasets KaggleSDG7 \
+  --raw-dir data \
+  --require-real-data \
+  --seq-len 128 \
+  --epochs 300
+```
+
+Run only the modified MSc experiment:
+
+```bash
+python3 -m paper_exp.modified_experiment \
+  --datasets NASA Oxford CALCE \
+  --epochs 5
+```
+
+Run the legacy synthetic demonstration:
+
+```bash
+python3 train.py
+```
+
+---
+
+## Reproducibility notes and limitations
+
+- The real public datasets are not committed to this repository.
+- Full paper-level reproduction requires the real data, 300-epoch schedule, and comparable hardware.
+- Latency and energy values are hardware dependent. The scripts estimate energy as `latency_ms * edge_power_watts`.
+- Root `train.py` uses synthetic fallback data by default and is best treated as the MSc extension demonstration unless real loading is added there.
+- `docs/AUDIT_REPORT.md` records a supervisor-style critique, including missing artefacts and priority improvements.
+
+---
+
+## MSc supervisor assessment summary
+
+Current repository status after the paper-first workflow additions:
+
+| Area | Assessment |
+| --- | --- |
+| Code organisation | Good prototype; `paper_exp/` is the canonical workflow |
+| Paper reproduction | Partial, architecture-faithful but not proven to match paper metrics from clone alone |
+| Modified contribution | Clear joint SOH/RUL extension with physics-informed loss |
+| Reproducibility | Improved CLI workflow, but no committed real datasets, full logs, model weights, tests, or lockfile |
+| Dissertation readiness | Suitable as a strong implementation appendix after adding experimental evidence and thesis analysis |
+
+Indicative UK MSc repository grade: **Merit** as a code artefact, with a route to **Distinction** if the missing evidence, ablations, tests, and dissertation analysis are added.

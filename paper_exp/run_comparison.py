@@ -58,6 +58,35 @@ def apply_smoke_overrides(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
+def _ensure_smoke_data(args: argparse.Namespace, output_dir: Path, logs_dir: Path) -> None:
+    if not args.smoke or "KaggleSDG7" not in args.paper_datasets:
+        return
+
+    processed_path = Path(args.raw_dir) / "processed" / "KaggleSDG7_paper_exp.npz"
+    if processed_path.exists():
+        return
+
+    smoke_data_dir = output_dir / "_smoke_data"
+    _run(
+        [
+            sys.executable,
+            "-m",
+            "paper_exp.prepare_data",
+            "--demo",
+            "--datasets",
+            "KaggleSDG7",
+            "--raw-dir",
+            str(smoke_data_dir),
+            "--output-dir",
+            str(smoke_data_dir / "processed"),
+            "--seq-len",
+            str(args.paper_seq_len),
+        ],
+        logs_dir / "00_prepare_smoke_data.log",
+    )
+    args.raw_dir = str(smoke_data_dir)
+
+
 def main() -> None:
     args = apply_smoke_overrides(build_arg_parser().parse_args())
     output_dir = Path(args.output_dir)
@@ -65,6 +94,8 @@ def main() -> None:
     modified_output = output_dir / "02_modified_experiment"
     comparison_output = output_dir / "03_comparison"
     logs_dir = output_dir / "logs"
+
+    _ensure_smoke_data(args, output_dir, logs_dir)
 
     if args.prepare_kaggle and "KaggleSDG7" in args.paper_datasets:
         _run(

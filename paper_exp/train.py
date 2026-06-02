@@ -242,6 +242,12 @@ def run_experiment(args: argparse.Namespace) -> Dict[str, object]:
         require_real_data=args.require_real_data,
     )
     folds = make_stratified_cycle_folds(bundle.dataset_names, args.n_folds)
+    actual_seq_len = int(bundle.features.shape[-1])
+    if actual_seq_len != args.seq_len:
+        print(
+            f"Warning: requested seq_len={args.seq_len}, but loaded processed features "
+            f"have seq_len={actual_seq_len}. Using loaded length for benchmarking."
+        )
     print(f"Loaded {len(bundle.soh)} cycles: features={bundle.features.shape}, device={device}")
 
     fold_metrics = []
@@ -264,7 +270,7 @@ def run_experiment(args: argparse.Namespace) -> Dict[str, object]:
     fresh_model = PaperCNNTCNLSTMAttention(dropout=args.dropout).to(device)
     efficiency = benchmark_efficiency(
         fresh_model,
-        seq_len=args.seq_len,
+        seq_len=actual_seq_len,
         batch_size=min(args.batch_size, 64),
         device=device,
         edge_power_watts=args.edge_power_watts,
