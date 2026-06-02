@@ -1,4 +1,4 @@
-# Paper Experiment Metric Comparison for Supervisor Review
+# Paper Experiment Metric Comparison
 
 This report summarises the paper experiment results obtained on the branch and compares them against the metrics reported in the referenced Scientific Reports paper.
 
@@ -91,7 +91,7 @@ python3 -m paper_exp.train \
 
 ---
 
-## 5. Supervisor-facing interpretation
+## 5. Interpretation
 
 The paper experiment is running correctly and the architecture parameter count is aligned with the paper. However, the exact published paper accuracy has not been reproduced as a 5-fold mean in this repository.
 
@@ -127,5 +127,5 @@ Status:
 - Best local stable mean: **RMSE `0.0394`, R2 `0.8862`**
 - Best local individual fold: **RMSE `0.0176`, R2 `0.9792`**
 
-This is suitable for a supervisor progress presentation, provided the result is presented honestly as a strong reproduction attempt rather than an exact replication of the published paper metric.
+This report should be presented honestly as a strong reproduction attempt rather than an exact replication of the published paper metric.
 

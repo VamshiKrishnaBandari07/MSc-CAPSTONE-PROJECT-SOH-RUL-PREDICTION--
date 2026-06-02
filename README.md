@@ -38,7 +38,7 @@ Reported paper targets used for comparison:
 ├── README.md
 ├── requirements.txt
 ├── docs/
-│   └── AUDIT_REPORT.md
+│   └── PAPER_EXPERIMENT_METRIC_COMPARISON.md
 ├── data/
 │   ├── NASA/PLACE_DATA_HERE.txt
 │   ├── Oxford/PLACE_DATA_HERE.txt
@@ -297,21 +297,4 @@ python3 train.py
 - Full paper-level reproduction requires the real data, 300-epoch schedule, and comparable hardware.
 - Latency and energy values are hardware dependent. The scripts estimate energy as `latency_ms * edge_power_watts`.
 - Root `train.py` uses synthetic fallback data by default and is best treated as the MSc extension demonstration unless real loading is added there.
-- `docs/AUDIT_REPORT.md` records a supervisor-style critique, including missing artefacts and priority improvements.
 - `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md` summarises the paper-target comparison, showing the initial result, the changes tried, and the best stable local metric.
-
----
-
-## MSc supervisor assessment summary
-
-Current repository status after the paper-first workflow additions:
-
-| Area | Assessment |
-| --- | --- |
-| Code organisation | Good prototype; `paper_exp/` is the canonical workflow |
-| Paper reproduction | Partial, architecture-faithful but not proven to match paper metrics from clone alone |
-| Modified contribution | Clear joint SOH/RUL extension with physics-informed loss |
-| Reproducibility | Improved CLI workflow, but no committed real datasets, full logs, model weights, tests, or lockfile |
-| Dissertation readiness | Suitable as a strong implementation appendix after adding experimental evidence and thesis analysis |
-
-Indicative UK MSc repository grade: **Merit** as a code artefact, with a route to **Distinction** if the missing evidence, ablations, tests, and dissertation analysis are added.
