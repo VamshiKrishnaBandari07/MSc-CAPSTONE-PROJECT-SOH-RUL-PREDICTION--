@@ -82,22 +82,85 @@ We evaluated the performance of our optimized framework against the paper's orig
 ## 📂 Repository File Layout
 
 ```bash
+├── requirements.txt   # Python package dependencies
 ├── preprocess.py      # SG smoothing, dQ/dV, dV/dQ, dI/dV extraction, NASA/Oxford/CALCE simulators
+├── preprocess_paper.py # Paper-aligned preprocessing & synthetic data
 ├── model.py           # PyTorch implementation of the 1D-CNN + TCN + LSTM + Attention model
+├── model_paper.py     # Exact paper reproduction (SOH-only head)
 ├── train.py           # Physics-informed multi-task training loop & cross-validation
-├── benchmark.py       # Precise microsecond latency profiling & BMS energy usage calculator
+├── train_paper.py     # Exact paper training pipeline (SOH, MSE loss)
+├── download_data.py   # Creates data/ folders and download placement guides
+├── benchmark.py       # Latency profiling & BMS energy usage calculator
+├── data/              # NASA, Oxford, CALCE raw datasets (optional; synthetic fallback built-in)
 └── .gitignore         # Ignores cache and intermediate python binary files
 ```
 
 ---
 
-## 🚀 Execution & Quick Start
+## 🛠 Setup
 
-Ensure you have PyTorch, SciPy, and NumPy installed on your machine:
+### Prerequisites
+
+- **Python 3.9+** (3.10 or 3.11 recommended)
+- **pip** (included with Python)
+- Optional: **NVIDIA GPU + CUDA** for faster training (CPU works out of the box)
+
+### 1. Clone the repository
 
 ```bash
-pip install torch scipy numpy
+git clone <your-repo-url>
+cd "battery SOH predications"
 ```
+
+### 2. Create a virtual environment (recommended)
+
+**Windows (PowerShell):**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+**macOS / Linux:**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+For **GPU acceleration**, install PyTorch with CUDA from the [official PyTorch install guide](https://pytorch.org/get-started/locally/) instead of the default CPU wheel, then install the rest:
+
+```bash
+pip install numpy scipy
+```
+
+### 4. Prepare data directories (optional)
+
+Training uses built-in synthetic data when real files are missing. To use NASA, Oxford, or CALCE datasets:
+
+```bash
+python download_data.py
+```
+
+Follow the links in `data/<DatasetName>/PLACE_DATA_HERE.txt`, download the raw files, and place them in the matching folder.
+
+### 5. Verify the installation
+
+```bash
+python model.py
+python preprocess.py
+```
+
+---
+
+## 🚀 Execution & Quick Start
 
 ### 1. Verify Model Architecture & Activation Dimensions
 Ensure the spatial and temporal shapes of all activations align correctly:
@@ -115,4 +178,9 @@ python train.py
 Profile latency (ms) and micro-BMS energy consumption (mJ) to compare against baseline architectures:
 ```bash
 python benchmark.py
+```
+
+### 4. Train the exact paper reproduction (SOH only)
+```bash
+python train_paper.py
 ```
