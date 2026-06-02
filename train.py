@@ -1,4 +1,9 @@
-"""Experiment B — MSc extension (joint SOH + RUL + physics-informed loss)."""
+"""Experiment B — MSc extension (joint SOH + RUL + physics-informed loss).
+
+Demonstration pipeline for the MSc contribution. NASA uses real .mat files when
+present; Oxford/CALCE use synthetic fallback. Not a full paper reproduction —
+see train_paper.py / run_nasa_real.py for Experiment A.
+"""
 
 import os
 

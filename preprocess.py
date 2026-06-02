@@ -85,7 +85,7 @@ def calculate_ic_dv_curves(voltage, capacity, current=None):
     
     return dq_dv_aligned, dv_dq_aligned, di_dv_aligned
 
-from experiments.nasa_loader import iter_nasa_discharge_cycles
+from experiments.nasa_loader import iter_nasa_discharge_cycles, iter_nasa_discharge_cycles_from_file
 
 
 def _align_sequence(values, seq_len):
@@ -99,28 +99,43 @@ def _align_sequence(values, seq_len):
 
 def _load_nasa_mat_files(data_dir, seq_len=100):
     """Parse NASA PCoE B*.mat discharge cycles into ICA/DVA/DCA features."""
-    all_features, all_soh = [], []
+    all_features, all_soh, all_rul = [], [], []
     eol_threshold = 0.70
+    mat_files = sorted(glob.glob(os.path.join(data_dir, "*.mat")))
 
-    for voltage, current, capacity_profile, soh in iter_nasa_discharge_cycles(data_dir):
-        ica, dva, dca = calculate_ic_dv_curves(voltage, capacity_profile, current)
-        ica = _align_sequence(ica, seq_len)
-        dva = _align_sequence(dva, seq_len)
-        dca = _align_sequence(dca, seq_len)
-        all_features.append(np.stack([ica, dva, dca], axis=0))
-        all_soh.append(soh)
+    for mat_path in mat_files:
+        cell_features, cell_soh = [], []
+
+        for voltage, current, capacity_profile, soh in iter_nasa_discharge_cycles_from_file(mat_path):
+            ica, dva, dca = calculate_ic_dv_curves(voltage, capacity_profile, current)
+            ica = _align_sequence(ica, seq_len)
+            dva = _align_sequence(dva, seq_len)
+            dca = _align_sequence(dca, seq_len)
+            cell_features.append(np.stack([ica, dva, dca], axis=0))
+            cell_soh.append(soh)
+
+        if not cell_features:
+            continue
+
+        cell_soh = np.array(cell_soh, dtype=np.float32)
+        eol_idx = next((i for i, s in enumerate(cell_soh) if s <= eol_threshold), len(cell_soh))
+        cell_rul = np.array([max(0, eol_idx - i) for i in range(len(cell_soh))], dtype=np.float32)
+
+        all_features.extend(cell_features)
+        all_soh.extend(cell_soh.tolist())
+        all_rul.extend(cell_rul.tolist())
 
     if not all_features:
         return None
 
     all_soh = np.array(all_soh, dtype=np.float32)
-    valid = np.isfinite(all_soh)
+    all_rul = np.array(all_rul, dtype=np.float32)
+    valid = np.isfinite(all_soh) & np.isfinite(all_rul)
     if not np.all(valid):
         all_features = [f for f, ok in zip(all_features, valid) if ok]
         all_soh = all_soh[valid]
+        all_rul = all_rul[valid]
 
-    eol_idx = next((i for i, s in enumerate(all_soh) if s <= eol_threshold), len(all_soh))
-    all_rul = np.array([max(0, eol_idx - i) for i in range(len(all_soh))], dtype=np.float32)
     return np.array(all_features, dtype=np.float32), all_soh, all_rul
 
 def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len=100):

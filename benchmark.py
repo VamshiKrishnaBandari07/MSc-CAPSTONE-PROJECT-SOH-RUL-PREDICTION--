@@ -5,7 +5,7 @@ import time
 import numpy as np
 import torch
 
-from experiments.config import PAPER_REFERENCE, RESULTS_DIR, SEQ_LEN
+from experiments.config import EDGE_POWER_WATTS, PAPER_REFERENCE, RESULTS_DIR, SEQ_LEN
 from experiments.io_utils import ensure_dirs, save_json
 from model import BatteryHealthPredictor
 from model_paper import BatterySOHPredictorPaper
@@ -69,20 +69,20 @@ def run_benchmark():
 
     latency_paper = benchmark_model(model_paper, device)
     latency_msc = benchmark_model(model_msc, device)
-    power_bms_w = 0.103
 
     stats = {
         "device": device.type,
+        "energy_model": f"energy_mJ = latency_ms * {EDGE_POWER_WATTS} W (estimated, not measured)",
         "paper_reproduction": {
             "params_m": params_paper / 1e6,
             "latency_ms": latency_paper,
-            "energy_mj": power_bms_w * latency_paper,
+            "energy_mj": EDGE_POWER_WATTS * latency_paper,
             "macs": estimate_model_macs("paper"),
         },
         "msc_proposed": {
             "params_m": params_msc / 1e6,
             "latency_ms": latency_msc,
-            "energy_mj": power_bms_w * latency_msc,
+            "energy_mj": EDGE_POWER_WATTS * latency_msc,
             "macs": estimate_model_macs("advanced"),
         },
         "published_baseline": PAPER_REFERENCE,
@@ -104,11 +104,14 @@ def run_benchmark():
     print(f" {'Published SOH RMSE':<22} | {ref_t['soh_rmse']:<18.3f} | {ref_p['soh_rmse']:<20.3f} | {'SOH + RUL':<16}")
     print("=" * 88)
 
-    exp_report = os.path.join(RESULTS_DIR, "experiment_comparison_report.json")
+    exp_report = os.path.join(RESULTS_DIR, "nasa_real_experiment_report.json")
+    if not os.path.exists(exp_report):
+        exp_report = os.path.join(RESULTS_DIR, "experiment_comparison_report.json")
     if os.path.exists(exp_report):
         with open(exp_report, encoding="utf-8") as handle:
             exp = json.load(handle)
-        print("\nLinked experiment SOH RMSE (from latest run_experiments.py):")
+        label = "nasa_real" if "nasa_real" in exp_report else "experiment_comparison"
+        print(f"\nLinked paper SOH RMSE ({label} report):")
         for row in exp.get("experiment_a_paper_reproduction", []):
             print(f"  Paper repro. | {row['dataset']}: {row['metrics']['rmse']:.4f}")
         for row in exp.get("experiment_b_msc_extension", []):

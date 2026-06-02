@@ -8,6 +8,8 @@
 
 ## 5.1 Experimental Setup
 
+> **Reproducibility:** Real datasets are not in git. NASA paper reproduction uses real B0005–B0018 `.mat` files via `run_nasa_real.py`. Oxford/CALCE paper runs use synthetic data. Training uses 25 epochs + early stopping, not the paper’s ~300-epoch schedule. See `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`.
+
 Two formal experiments were conducted:
 
 | Experiment | Objective | Model | Loss | Features |
@@ -65,9 +67,9 @@ On Oxford and CALCE synthetic data, the MSc model achieves SOH RMSE comparable t
 | Model | SOH RMSE | RUL RMSE | Additional capability |
 | :--- | :---: | :---: | :--- |
 | Paper reproduction | **0.022** | — | SOH only |
-| MSc PI-MT (physics loss) | 0.077 | 16.77 cycles | Joint SOH + RUL |
+| MSc PI-MT (physics loss) | 0.074 | 35.23 cycles | Joint SOH + RUL |
 
-On real NASA data, the paper reproduction remains superior for SOH-only prediction (0.022 vs 0.077). The MSc extension adds RUL estimation at the cost of SOH fidelity — a expected trade-off in multi-task learning when RUL labels span a wider dynamic range (0–161 cycles) than SOH (0.57–1.0).
+On real NASA data, the paper reproduction remains superior for SOH-only prediction (0.022 vs 0.074). The MSc extension adds RUL estimation at the cost of SOH fidelity — an expected trade-off in multi-task learning. RUL labels are computed **per NASA cell** (B0005–B0018) with end-of-life at SOH ≤ 0.70; early stopping uses a combined SOH + RUL validation score.
 
 *Figure reference:* `results/figures/fig_nasa_real_02_rul_trajectories.pdf`
 
@@ -77,11 +79,11 @@ On real NASA data, the paper reproduction remains superior for SOH-only predicti
 
 | Dataset | SOH RMSE (no physics) | SOH RMSE (with physics) | Mono. reduction |
 | :--- | :---: | :---: | :---: |
-| NASA (real) | 0.078 | 0.077 | +2.4% |
+| NASA (real) | 0.081 | 0.074 | comparable |
 | Oxford (synthetic) | 0.028 | 0.032 | 0.0% |
 | CALCE (synthetic) | 0.095 | **0.021** | -3.5% |
 
-The physics-informed monotonicity penalty (γ = 0.25) demonstrates the largest benefit on CALCE synthetic data, where SOH RMSE improved from 0.095 to 0.021. On real NASA data, the penalty provides a modest monotonicity improvement (+2.4%) without degrading SOH accuracy.
+The physics-informed monotonicity penalty (γ = 0.25) demonstrates the largest benefit on CALCE synthetic data, where SOH RMSE improved from 0.095 to 0.021. On real NASA data, the physics model achieves lower SOH RMSE than the ablation (0.074 vs 0.081); monotonicity violation rates remain similar on this pooled multi-cell validation split.
 
 *Figure reference:* `results/figures/fig07_ablation_monotonicity.pdf`
 

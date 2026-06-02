@@ -80,7 +80,8 @@ Two formal experiments are implemented with shared metrics, early stopping, and 
 
 | Experiment | Script | Description |
 | :--- | :--- | :--- |
-| **A — Paper reproduction** | `python train_paper.py` | Exact paper pipeline: ICA + DVA + voltage, SOH-only, MSE loss |
+| **A — Paper reproduction (real NASA)** | `python run_nasa_real.py` | **Primary thesis result** — real B0005–B0018 `.mat`, SOH-only |
+| **A — Paper reproduction** | `python train_paper.py` | Paper pipeline on all datasets (NASA real if `.mat` present) |
 | **B — MSc extension** | `python train.py` | Joint SOH + RUL with physics-informed monotonicity loss |
 | **A + B + C + benchmark** | `python run_experiments.py` | Full suite: paper repro, MSc model, ablation, comparison report |
 | **Computational profile** | `python benchmark.py` | Parameters, latency, energy vs published baselines |
@@ -120,7 +121,7 @@ After running experiments, see `results/experiment_comparison_report.json` for p
 | Model | SOH RMSE | vs Published Paper (0.021) |
 | :--- | :---: | :--- |
 | Paper reproduction (ours) | **0.022** | +4.9% |
-| MSc PI-MT (ours) | 0.077 | SOH + RUL joint target |
+| MSc PI-MT (ours) | 0.074 | SOH + RUL joint target |
 | Published Transformer | 0.038 | baseline |
 
 ---
@@ -128,6 +129,7 @@ After running experiments, see `results/experiment_comparison_report.json` for p
 ## Repository layout
 
 ```bash
+├── run_nasa_real.py    # Experiment A+B on real NASA only (thesis primary)
 ├── run_experiments.py  # Full A+B+C experiment suite + comparison report
 ├── train.py            # Experiment B — MSc extension only
 ├── train_paper.py      # Experiment A — paper reproduction only
@@ -140,7 +142,8 @@ After running experiments, see `results/experiment_comparison_report.json` for p
 ├── download_data.py    # Data folder setup guides
 ├── checkpoints/        # Saved model weights (generated)
 ├── results/            # JSON experiment reports (generated)
-├── tests/              # Unit tests for metrics
+├── tests/              # Unit tests (run: pytest tests/ -v)
+├── docs/               # Thesis results, paper comparison, examiner checklist
 ├── data/               # NASA, Oxford, CALCE raw data (optional)
 └── requirements.txt
 ```
@@ -198,6 +201,7 @@ Follow the links in `data/<DatasetName>/PLACE_DATA_HERE.txt`, download the raw f
 ### 5. Verify installation
 
 ```bash
+pytest tests/ -v
 python model.py
 python preprocess.py
 python benchmark.py
@@ -220,6 +224,49 @@ python benchmark.py
 
 ---
 
+## Reproducibility notes and limitations
+
+### Data
+
+- **Real public datasets are not committed** to this repository (`.mat`, `.xls`, `.zip` are gitignored).
+- Download NASA data after clone: `python download_data.py --nasa`
+- **Paper experiment on real data** applies to **NASA only** when `data/NASA/*.mat` exists. Oxford and CALCE use **synthetic fallback** in `train_paper.py` until real parsers are added.
+
+### Which runs are “real” for the paper experiment?
+
+| Script | NASA | Oxford / CALCE |
+| :--- | :--- | :--- |
+| `run_nasa_real.py` | **Real `.mat`** | Not run |
+| `train_paper.py` | **Real if `.mat` present** | Synthetic |
+| `run_experiments.py` | **Real if `.mat` present** | Synthetic |
+| `train.py` (MSc extension) | Real if `.mat` in `data/NASA/` | Synthetic |
+
+**Thesis-quality paper reproduction:** use `run_nasa_real.py` → SOH RMSE **0.022** vs published **0.021** (see `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`).
+
+### Training schedule
+
+- This repo: **25 max epochs + early stopping** (`experiments/config.py`).
+- Published paper-level runs often use **~300 epochs**. Full parity requires matching their schedule, batch size, and split protocol.
+
+### Latency and energy
+
+- **Latency** is measured on **your hardware** (CPU/GPU). Published values (12.4 ms / 6.1 ms) are reference only.
+- **Energy (mJ)** is **estimated**, not measured: `energy_mJ = latency_ms × EDGE_POWER_WATTS` (default 0.103 W in `experiments/config.py`). Treat as comparative, not calibrated lab measurements.
+
+### MSc extension (`train.py`)
+
+- Demonstrates joint SOH + RUL + physics-informed loss.
+- Uses **synthetic fallback** for Oxford/CALCE; NASA uses real `.mat` when available.
+- Best treated as the **MSc contribution demo** unless you report real NASA results from `run_nasa_real.py` separately.
+
+### Detailed paper metric history
+
+See **[docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md](docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md)** for initial vs improved results, changes tried, and the best stable local metric.
+
+For supervisor/viva preparation, see **[docs/EXAMINER_CHECKLIST.md](docs/EXAMINER_CHECKLIST.md)**.
+
+---
+
 ## Project status and known limitations
 
 The codebase is **runnable end-to-end** and suitable as an MSc software artefact. Items a supervisor would typically expect before final submission:
@@ -228,11 +275,13 @@ The codebase is **runnable end-to-end** and suitable as an MSc software artefact
 | :--- | :--- | :--- |
 | Model architecture | Complete | CNN-TCN-LSTM-Attention implemented in PyTorch |
 | Physics-informed loss | Complete | Monotonicity penalty in `train.py` |
-| Paper reproduction | Complete | Separate `*_paper.py` pipeline |
+| Paper reproduction (real NASA) | Complete | `run_nasa_real.py` — SOH RMSE 0.022 |
+| Paper reproduction (Oxford/CALCE real) | Pending | Synthetic only in `train_paper.py` |
 | Synthetic evaluation | Complete | NASA / Oxford / CALCE simulators |
 | Real NASA `.mat` loading | Complete | Auto-detects `.mat` files in `data/NASA/` |
 | Real Oxford / CALCE parsing | Pending | Placeholder guides provided |
-| Unit tests | Partial | `tests/test_metrics.py` |
+| Unit tests | Partial | `pytest tests/ -v` |
+| Examiner review checklist | Complete | `docs/EXAMINER_CHECKLIST.md` |
 | Saved model checkpoints | Complete | Exported to `checkpoints/` during training |
 | Experiment comparison report | Complete | `results/experiment_comparison_report.json` |
 | Ablation study (no physics loss) | Complete | Experiment C in `run_experiments.py` |

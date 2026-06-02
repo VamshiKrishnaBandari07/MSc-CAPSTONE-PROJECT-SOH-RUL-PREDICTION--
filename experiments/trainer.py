@@ -101,6 +101,12 @@ def split_indices(n_samples, train_ratio=TRAIN_RATIO):
     return split_idx
 
 
+def _msc_validation_score(soh_metrics, rul_metrics, max_rul):
+    """Combined early-stopping score for joint SOH + RUL training."""
+    normalized_rul_rmse = rul_metrics["rmse"] / max(max_rul, 1.0)
+    return soh_metrics["rmse"] + MSC_DEFAULTS["rul_weight"] * normalized_rul_rmse
+
+
 def _evaluate_paper_model(model, loader, device):
     model.eval()
     preds, targets = [], []
@@ -282,6 +288,7 @@ def train_msc_experiment(
         eval_result = _evaluate_msc_model(model, val_loader, device, max_rul)
         soh_m = eval_result["soh"]
         rul_m = eval_result["rul"]
+        val_score = _msc_validation_score(soh_m, rul_m, max_rul)
         scheduler.step(soh_m["rmse"])
 
         history.append(
@@ -293,12 +300,13 @@ def train_msc_experiment(
                 "val_soh_r2": soh_m["r2"],
                 "val_rul_rmse": rul_m["rmse"],
                 "val_rul_mae": rul_m["mae"],
+                "val_rul_r2": rul_m["r2"],
+                "val_combined_score": val_score,
                 "mono_violation_rate": soh_m["mono_violation_rate"],
             }
         )
 
-        score = soh_m["rmse"]
-        improved = early_stop.step(score)
+        improved = early_stop.step(val_score)
         if improved:
             best_result = eval_result
             best_epoch = epoch

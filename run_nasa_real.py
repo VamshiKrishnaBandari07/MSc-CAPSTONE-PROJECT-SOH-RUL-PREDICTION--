@@ -6,7 +6,7 @@ import time
 import torch
 
 from benchmark import benchmark_model, estimate_model_macs
-from experiments.config import CHECKPOINT_DIR, NUM_CYCLES, PAPER_REFERENCE, SEQ_LEN
+from experiments.config import CHECKPOINT_DIR, EDGE_POWER_WATTS, NUM_CYCLES, PAPER_REFERENCE, SEQ_LEN
 from experiments.io_utils import ensure_dirs, save_json
 from experiments.report import build_summary_payload, print_comparison_report
 from experiments.trainer import set_seed, train_msc_experiment, train_paper_experiment
@@ -14,6 +14,7 @@ from model import BatteryHealthPredictor
 from model_paper import BatterySOHPredictorPaper
 from preprocess import BatteryDatasetLoader
 from preprocess_paper import PaperDatasetLoader
+from experiments.provenance import detect_data_sources, experiment_config_snapshot
 
 
 def _has_nasa_mat_files():
@@ -79,7 +80,6 @@ def run_nasa_real_experiments(run_ablation=True):
 
     model_paper = BatterySOHPredictorPaper().to(device)
     model_msc = BatteryHealthPredictor().to(device)
-    power_bms_w = 0.103
     benchmark_stats = {
         "paper": {
             "params_m": sum(p.numel() for p in model_paper.parameters() if p.requires_grad) / 1e6,
@@ -96,11 +96,13 @@ def run_nasa_real_experiments(run_ablation=True):
         "published_transformer": PAPER_REFERENCE["transformer"],
         "published_paper_hybrid": PAPER_REFERENCE["paper_hybrid"],
     }
-    benchmark_stats["paper"]["energy_mj"] = 0.103 * benchmark_stats["paper"]["latency_ms"]
-    benchmark_stats["msc"]["energy_mj"] = 0.103 * benchmark_stats["msc"]["latency_ms"]
+    benchmark_stats["paper"]["energy_mj"] = EDGE_POWER_WATTS * benchmark_stats["paper"]["latency_ms"]
+    benchmark_stats["msc"]["energy_mj"] = EDGE_POWER_WATTS * benchmark_stats["msc"]["latency_ms"]
 
     summary = build_summary_payload([paper_result], [msc_result], benchmark_stats, ablation_results)
     summary["data_source"] = "NASA_real_mat"
+    summary["data_sources"] = detect_data_sources()
+    summary["experiment_config"] = experiment_config_snapshot()
     report_path = save_json(summary, "nasa_real_experiment_report.json")
     print_comparison_report([paper_result], [msc_result], benchmark_stats, ablation_results)
     print(f"\nReal NASA results saved to: {report_path}")

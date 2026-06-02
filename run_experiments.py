@@ -13,7 +13,7 @@ import time
 import torch
 
 from benchmark import benchmark_model, estimate_model_macs
-from experiments.config import CHECKPOINT_DIR, DATASETS, NUM_CYCLES, PAPER_REFERENCE, SEQ_LEN
+from experiments.config import CHECKPOINT_DIR, DATASETS, EDGE_POWER_WATTS, NUM_CYCLES, PAPER_REFERENCE, SEQ_LEN
 from experiments.io_utils import ensure_dirs, save_json
 from experiments.report import build_summary_payload, print_comparison_report
 from experiments.trainer import set_seed, train_msc_experiment, train_paper_experiment
@@ -21,6 +21,7 @@ from model import BatteryHealthPredictor
 from model_paper import BatterySOHPredictorPaper
 from preprocess import BatteryDatasetLoader
 from preprocess_paper import PaperDatasetLoader
+from experiments.provenance import detect_data_sources, experiment_config_snapshot
 
 
 def _run_benchmarks(device):
@@ -33,18 +34,17 @@ def _run_benchmarks(device):
     latency_paper = benchmark_model(model_paper, device)
     latency_msc = benchmark_model(model_msc, device)
 
-    power_bms_w = 0.103
     return {
         "paper": {
             "params_m": params_paper / 1e6,
             "latency_ms": latency_paper,
-            "energy_mj": power_bms_w * latency_paper,
+            "energy_mj": EDGE_POWER_WATTS * latency_paper,
             "macs": estimate_model_macs("paper", SEQ_LEN),
         },
         "msc": {
             "params_m": params_msc / 1e6,
             "latency_ms": latency_msc,
-            "energy_mj": power_bms_w * latency_msc,
+            "energy_mj": EDGE_POWER_WATTS * latency_msc,
             "macs": estimate_model_macs("advanced", SEQ_LEN),
         },
         "published_transformer": PAPER_REFERENCE["transformer"],
@@ -118,6 +118,8 @@ def run_all_experiments(run_ablation=True):
     benchmark_stats = _run_benchmarks(device)
 
     summary = build_summary_payload(paper_results, msc_results, benchmark_stats, ablation_results)
+    summary["data_sources"] = detect_data_sources()
+    summary["experiment_config"] = experiment_config_snapshot()
     report_path = save_json(summary, "experiment_comparison_report.json")
     print_comparison_report(paper_results, msc_results, benchmark_stats, ablation_results)
     print(f"Full results saved to: {report_path}")

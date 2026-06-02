@@ -1,4 +1,11 @@
-"""Experiment A — Paper-exact reproduction (SOH only, MSE loss)."""
+"""Experiment A — Paper-exact reproduction (SOH only, MSE loss).
+
+NASA: loads real B0005–B0018 .mat files when present in data/NASA/.
+Oxford/CALCE: synthetic fallback only.
+
+For thesis-quality real NASA paper reproduction, prefer: python run_nasa_real.py
+See docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md for metric history and limitations.
+"""
 
 import os
 
