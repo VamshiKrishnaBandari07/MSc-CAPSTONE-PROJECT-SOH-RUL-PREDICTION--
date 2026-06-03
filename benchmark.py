@@ -7,8 +7,10 @@ import torch
 
 from experiments.config import EDGE_POWER_WATTS, PAPER_REFERENCE, RESULTS_DIR, SEQ_LEN
 from experiments.io_utils import ensure_dirs, save_json
+from experiments.runtime import configure_runtime
 from model import BatteryHealthPredictor
-from model_paper import BatterySOHPredictorPaper
+from model_paper import build_paper_model
+from experiments.paper_config import PAPER_SEQ_LEN
 
 
 def estimate_model_macs(model_type="advanced", seq_len=SEQ_LEN):
@@ -29,9 +31,9 @@ def estimate_model_macs(model_type="advanced", seq_len=SEQ_LEN):
     return macs
 
 
-def benchmark_model(model, device, num_runs=300):
+def benchmark_model(model, device, num_runs=300, seq_len=SEQ_LEN):
     model.eval()
-    dummy_input = torch.randn(1, 3, 100).to(device)
+    dummy_input = torch.randn(1, 3, seq_len).to(device)
 
     for _ in range(30):
         with torch.no_grad():
@@ -57,18 +59,18 @@ def benchmark_model(model, device, num_runs=300):
     return float(np.mean(latencies))
 
 
-def run_benchmark():
+def run_benchmark(force_cpu=False):
     ensure_dirs()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = configure_runtime(force_cpu=force_cpu)
 
-    model_paper = BatterySOHPredictorPaper().to(device)
+    model_paper = build_paper_model(seq_len=PAPER_SEQ_LEN).to(device)
     model_msc = BatteryHealthPredictor().to(device)
 
     params_paper = sum(p.numel() for p in model_paper.parameters() if p.requires_grad)
     params_msc = sum(p.numel() for p in model_msc.parameters() if p.requires_grad)
 
-    latency_paper = benchmark_model(model_paper, device)
-    latency_msc = benchmark_model(model_msc, device)
+    latency_paper = benchmark_model(model_paper, device, seq_len=PAPER_SEQ_LEN)
+    latency_msc = benchmark_model(model_msc, device, seq_len=SEQ_LEN)
 
     stats = {
         "device": device.type,

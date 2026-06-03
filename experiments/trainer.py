@@ -17,6 +17,7 @@ from experiments.config import (
     WEIGHT_DECAY,
 )
 from experiments.io_utils import save_checkpoint
+from experiments.runtime import get_device, msc_batch_size, paper_batch_size
 from experiments.metrics import monotonicity_violation_rate, regression_metrics
 
 
@@ -181,7 +182,7 @@ def train_paper_experiment(
         )
 
         epochs = epochs or PAPER_MAX_EPOCHS
-        batch_size = batch_size or PAPER_BATCH_SIZE
+        batch_size = batch_size or paper_batch_size()
         lr = PAPER_LEARNING_RATE
         weight_decay = PAPER_WEIGHT_DECAY
         grad_clip = PAPER_GRAD_CLIP_NORM
@@ -191,7 +192,7 @@ def train_paper_experiment(
         feature_noise = 0.005  # training-time jitter on normalized ICA/DV/DC channels
     else:
         epochs = epochs or MAX_EPOCHS
-        batch_size = batch_size or BATCH_SIZE
+        batch_size = batch_size or msc_batch_size()
         lr = LEARNING_RATE
         weight_decay = WEIGHT_DECAY
         grad_clip = None
@@ -204,11 +205,13 @@ def train_paper_experiment(
     train_ds = PaperDataset(features[:split_idx], soh[:split_idx])
     val_ds = PaperDataset(features[split_idx:], soh[split_idx:])
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
     model = model.to(device)
+    if device.type == "cpu":
+        print(f"[Paper | {dataset_name}] Training on CPU (batch_size={batch_size})")
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -290,20 +293,26 @@ def train_msc_experiment(
     dataset_name,
     checkpoint_path,
     use_physics_loss=True,
-    epochs=MAX_EPOCHS,
-    batch_size=BATCH_SIZE,
+    epochs=None,
+    batch_size=None,
 ):
+    if epochs is None:
+        epochs = MAX_EPOCHS
+    if batch_size is None:
+        batch_size = msc_batch_size()
     max_rul = float(np.max(rul)) if len(rul) else 1.0
     split_idx = split_indices(len(features))
 
     train_ds = MScDataset(features[:split_idx], soh[:split_idx], rul[:split_idx], max_rul)
     val_ds = MScDataset(features[split_idx:], soh[split_idx:], rul[split_idx:], max_rul)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=False)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=0)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
     model = model.to(device)
+    if device.type == "cpu":
+        print(f"[MSc | {dataset_name}] Training on CPU (batch_size={batch_size})")
 
     mono_weight = MSC_DEFAULTS["monotonicity_weight"] if use_physics_loss else 0.0
     criterion = JointPhysicsInformedLoss(

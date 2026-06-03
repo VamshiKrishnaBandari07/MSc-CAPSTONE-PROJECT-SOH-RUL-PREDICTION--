@@ -95,7 +95,7 @@ Output: [`results/experiment_comparison_report.json`](results/experiment_compari
 | 1 | `pip install -r requirements.txt` | Install dependencies |
 | 2 | `python scripts/verify_setup.py` | Check Python, packages, data |
 | 3 | `python download_data.py --all` | Download real NASA, Oxford, CALCE |
-| 4 | **`python run_paper_experiment.py`** | **Experiment A** (paper methodology) |
+| 4 | **`python run_paper_experiment.py --cpu`** | **Experiment A on CPU** (auto if no GPU) |
 | 5 | `python run_experiments.py` | **Experiments A + B + C** (full capstone) |
 | 6 | `python generate_figures.py` | Thesis figures (PNG + PDF) |
 | 7 | `pytest tests/ -v` | Run unit tests |
@@ -104,7 +104,21 @@ NASA-only paper run: `python run_nasa_real.py`
 
 ---
 
-## Published vs local results
+## Running on CPU (no GPU required)
+
+All experiments **run on CPU automatically** when CUDA is not available. No GPU is required.
+
+| Command | Purpose |
+|:---|:---|
+| `python run_paper_experiment.py --cpu` | Experiment A on CPU |
+| `python run_paper_experiment.py --cpu --dataset NASA` | NASA only (~30–60 min) |
+| `python run_experiments.py --cpu --dataset NASA` | Full A+B+C on NASA only |
+| `set FORCE_CPU=1` (Windows) | Force CPU even if GPU exists |
+
+**CPU settings:** batch size 4 (paper) / 4 (MSc), PyTorch uses up to 8 threads.  
+**Expected time:** ~30–90 min per dataset (Experiment A); full suite ~3–6 hours on CPU.
+
+---
 
 | | Paper (Table 4) | Experiment A (re-run after clone) |
 |:---|:---:|:---:|

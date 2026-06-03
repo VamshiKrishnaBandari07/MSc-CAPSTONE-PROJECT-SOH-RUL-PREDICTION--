@@ -10,9 +10,9 @@ Computational benchmark: latency, parameters, energy
 import os
 import time
 
-import torch
-
 from benchmark import benchmark_model, estimate_model_macs
+from experiments.cli import parse_runtime_args
+from experiments.runtime import configure_runtime, get_device
 from experiments.config import CHECKPOINT_DIR, DATASETS, EDGE_POWER_WATTS, NUM_CYCLES, PAPER_REFERENCE, SEQ_LEN
 from experiments.paper_config import PAPER_SEQ_LEN
 from experiments.io_utils import ensure_dirs, save_json
@@ -32,8 +32,8 @@ def _run_benchmarks(device):
     params_paper = sum(p.numel() for p in model_paper.parameters() if p.requires_grad)
     params_msc = sum(p.numel() for p in model_msc.parameters() if p.requires_grad)
 
-    latency_paper = benchmark_model(model_paper, device)
-    latency_msc = benchmark_model(model_msc, device)
+    latency_paper = benchmark_model(model_paper, device, seq_len=PAPER_SEQ_LEN)
+    latency_msc = benchmark_model(model_msc, device, seq_len=SEQ_LEN)
 
     return {
         "paper": {
@@ -53,22 +53,25 @@ def _run_benchmarks(device):
     }
 
 
-def run_all_experiments(run_ablation=True):
+def run_all_experiments(run_ablation=True, force_cpu=False, batch_size=None, paper_max_epochs=None, msc_max_epochs=None, datasets=None):
+    datasets = datasets or DATASETS
     set_seed()
     ensure_dirs()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = configure_runtime(force_cpu=force_cpu)
 
     print("\n" + "=" * 96)
     print("MSc CAPSTONE - FULL EXPERIMENTAL SUITE")
     print("Experiment A: Paper reproduction (ICA+DV+DC, grid=%d) | Experiment B: MSc extension (ICA+DV+DCA)" % PAPER_SEQ_LEN)
-    print(f"Device: {device.type.upper()} | Datasets: {', '.join(DATASETS)} | Seed: 42")
+    print(f"Device: {device.type.upper()} | Datasets: {', '.join(datasets)} | Seed: 42")
+    if device.type == "cpu":
+        print("CPU mode — full suite may take several hours. Use --dataset NASA for a faster run.")
     print("=" * 96)
 
     paper_results = []
     msc_results = []
     ablation_results = []
 
-    for dataset in DATASETS:
+    for dataset in datasets:
         print(f"\n{'#' * 96}\n# DATASET: {dataset}\n{'#' * 96}")
 
         paper_features, paper_soh = PaperDatasetLoader.load_dataset(
@@ -86,6 +89,8 @@ def run_all_experiments(run_ablation=True):
             paper_soh,
             dataset,
             paper_ckpt,
+            epochs=paper_max_epochs,
+            batch_size=batch_size,
             use_paper_protocol=True,
         )
         paper_results.append(paper_result)
@@ -100,6 +105,8 @@ def run_all_experiments(run_ablation=True):
             dataset,
             msc_ckpt,
             use_physics_loss=True,
+            epochs=msc_max_epochs,
+            batch_size=batch_size,
         )
         msc_results.append(msc_result)
 
@@ -114,6 +121,8 @@ def run_all_experiments(run_ablation=True):
                 dataset,
                 ablation_ckpt,
                 use_physics_loss=False,
+                epochs=msc_max_epochs,
+                batch_size=batch_size,
             )
             ablation_results.append(ablation_result)
 
@@ -132,7 +141,16 @@ def run_all_experiments(run_ablation=True):
 
 
 if __name__ == "__main__":
+    args = parse_runtime_args("Full capstone suite — Experiments A + B + C (CPU/GPU)")
     started = time.time()
-    run_all_experiments(run_ablation=True)
+    datasets = (args.dataset,) if args.dataset else DATASETS
+    run_all_experiments(
+        run_ablation=True,
+        force_cpu=args.cpu,
+        batch_size=args.batch_size,
+        paper_max_epochs=args.max_epochs,
+        msc_max_epochs=args.max_epochs,
+        datasets=datasets,
+    )
     elapsed = time.time() - started
     print(f"Total experiment runtime: {elapsed / 60:.1f} minutes")

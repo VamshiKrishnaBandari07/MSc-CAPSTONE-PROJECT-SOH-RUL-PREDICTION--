@@ -3,12 +3,12 @@
 import os
 import time
 
-import torch
-
 from benchmark import benchmark_model, estimate_model_macs
-from experiments.config import CHECKPOINT_DIR, EDGE_POWER_WATTS, PAPER_REFERENCE, SEQ_LEN
+from experiments.config import CHECKPOINT_DIR, EDGE_POWER_WATTS, NUM_CYCLES, PAPER_REFERENCE, SEQ_LEN
+from experiments.runtime import configure_runtime
 from experiments.paper_config import PAPER_SEQ_LEN
 from experiments.io_utils import ensure_dirs, save_json
+from experiments.cli import parse_runtime_args
 from experiments.report import build_summary_payload, print_comparison_report
 from experiments.trainer import set_seed, train_msc_experiment, train_paper_experiment
 from model import BatteryHealthPredictor
@@ -23,7 +23,7 @@ def _has_nasa_mat_files():
     return os.path.isdir(nasa_dir) and any(f.lower().endswith(".mat") for f in os.listdir(nasa_dir))
 
 
-def run_nasa_real_experiments(run_ablation=True):
+def run_nasa_real_experiments(run_ablation=True, force_cpu=False):
     if not _has_nasa_mat_files():
         raise FileNotFoundError(
             "No NASA .mat files found. Run: python download_data.py --nasa"
@@ -31,7 +31,7 @@ def run_nasa_real_experiments(run_ablation=True):
 
     set_seed()
     ensure_dirs()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = configure_runtime(force_cpu=force_cpu)
     dataset = "NASA"
 
     print("\n" + "=" * 96)
@@ -85,13 +85,13 @@ def run_nasa_real_experiments(run_ablation=True):
     benchmark_stats = {
         "paper": {
             "params_m": sum(p.numel() for p in model_paper.parameters() if p.requires_grad) / 1e6,
-            "latency_ms": benchmark_model(model_paper, device),
+            "latency_ms": benchmark_model(model_paper, device, seq_len=PAPER_SEQ_LEN),
             "energy_mj": 0,
             "macs": estimate_model_macs("paper", PAPER_SEQ_LEN),
         },
         "msc": {
             "params_m": sum(p.numel() for p in model_msc.parameters() if p.requires_grad) / 1e6,
-            "latency_ms": benchmark_model(model_msc, device),
+            "latency_ms": benchmark_model(model_msc, device, seq_len=SEQ_LEN),
             "energy_mj": 0,
             "macs": estimate_model_macs("advanced", SEQ_LEN),
         },
@@ -112,6 +112,7 @@ def run_nasa_real_experiments(run_ablation=True):
 
 
 if __name__ == "__main__":
+    args = parse_runtime_args("NASA real-data experiments (CPU/GPU)")
     started = time.time()
-    run_nasa_real_experiments(run_ablation=True)
+    run_nasa_real_experiments(run_ablation=True, force_cpu=args.cpu)
     print(f"Runtime: {(time.time() - started) / 60:.1f} minutes")

@@ -3,7 +3,7 @@
 import os
 
 import numpy as np
-import torch
+from experiments.runtime import get_device
 from torch.utils.data import DataLoader
 
 from experiments.config import CHECKPOINT_DIR, NUM_CYCLES, SEQ_LEN
@@ -83,7 +83,7 @@ def _predict_msc(model_cls, features, soh, rul, checkpoint_path, device):
 
 
 def collect_dataset_predictions(dataset_name, paper_ckpt=None, msc_ckpt=None, ablation_ckpt=None):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
 
     paper_features, paper_soh = PaperDatasetLoader.load_dataset(
         dataset_name, num_cycles=NUM_CYCLES, seq_len=SEQ_LEN

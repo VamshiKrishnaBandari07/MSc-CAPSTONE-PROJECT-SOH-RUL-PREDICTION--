@@ -6,6 +6,7 @@ SEQ_LEN = 100
 NUM_CYCLES = 150
 TRAIN_RATIO = 0.8
 BATCH_SIZE = 8
+BATCH_SIZE_CPU = 4  # smaller batches for stable CPU training
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 1e-5
 MAX_EPOCHS = 25
