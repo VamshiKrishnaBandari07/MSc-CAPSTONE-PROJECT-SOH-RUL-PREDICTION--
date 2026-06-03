@@ -11,7 +11,7 @@ This document clarifies **which paper-experiment runs use real data**, how local
 | Is the **architecture** paper-faithful? | **Yes** — `model_paper.py`, ICA + DVA + voltage features, SOH-only MSE loss (`train_paper.py`). |
 | Is **NASA data** real when `.mat` files are present? | **Yes** — B0005, B0006, B0007, B0018 discharge cycles (636 cycles combined) via `experiments/nasa_loader.py`. |
 | Is **Oxford / CALCE** real in `train_paper.py`? | **Yes** — when `.mat` / `.xlsx` files are present via `oxford_loader.py` and `calce_loader.py`. |
-| Is the **training schedule** identical to the paper? | **No** — this repo uses **25 max epochs + early stopping (patience 5)**, not the paper’s longer schedule (often **~300 epochs** in similar work). |
+| Is the **training schedule** identical to the paper? | **Mostly** — Experiment A uses `PAPER_MAX_EPOCHS=200`, early stopping (patience 20), grad clip, and LR schedule (`experiments/paper_config.py`). Experiment B uses 25 epochs for MSc demo. |
 | Is the **hardware** identical? | **No** — local CPU timings; paper values were measured on their setup. |
 | Is the **full published protocol** replicated? | **Partially** — see gaps below. |
 

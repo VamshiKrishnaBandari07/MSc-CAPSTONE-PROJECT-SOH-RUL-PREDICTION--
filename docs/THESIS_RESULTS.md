@@ -14,7 +14,7 @@ Two formal experiments were conducted:
 
 | Experiment | Objective | Model | Loss | Features |
 | :--- | :--- | :--- | :--- | :--- |
-| **A — Paper reproduction** | Validate implementation against published baselines | CNN-TCN-LSTM-Attention (SOH head) | MSE | ICA, DVA, voltage |
+| **A — Paper reproduction** | Validate implementation against published baselines | CNN-TCN-LSTM-Attention (SOH head) | MSE | ICA, DV, DC (dQ/dV, dV/dQ, dI/dV) |
 | **B — MSc extension** | Joint SOH + RUL with physics-informed regularisation | CNN-TCN-LSTM-Attention (joint head) | MSE + monotonicity penalty | ICA, DVA, DCA |
 
 Evaluation used an 80/20 chronological train-validation split, early stopping (patience = 5), Adam optimiser (lr = 1e-3), and fixed random seed (42). Three datasets were evaluated on **real public data**: NASA PCoE (B0005–B0018, 636 cycles), Oxford Battery Degradation Dataset 1 (519 characterisation cycles), and CALCE CS2 (CS2_33, CS2_35, CS2_36; 2703 discharge cycles).
