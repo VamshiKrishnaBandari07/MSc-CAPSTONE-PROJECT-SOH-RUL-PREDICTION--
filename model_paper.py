@@ -95,22 +95,30 @@ class SelfAttention(nn.Module):
 
 class BatterySOHPredictorPaper(nn.Module):
     """
-    EXACT PAPER IMPLEMENTATION:
-    - 1D-CNN: Captures local cycle spatial configurations.
-    - TCN: Dilated convolutions for temporal dependencies.
-    - LSTM: Models capacity fading transitions.
-    - Self-Attention: Highlights critical aging peaks.
-    - Regression Head: Standard single SOH scalar estimation (no RUL prediction).
+    Paper reproduction architecture (Scientific Reports 2026):
+    1D-CNN (k=5) + BatchNorm + TCN + LSTM + Attention -> SOH in [0, 1].
     """
-    def __init__(self, input_features=3, cnn_out_channels=32, tcn_channels=[32, 64], lstm_hidden=64, num_lstm_layers=1, dropout=0.2):
+    def __init__(
+        self,
+        input_features=3,
+        cnn_out_channels=32,
+        tcn_channels=None,
+        lstm_hidden=64,
+        num_lstm_layers=1,
+        dropout=0.2,
+    ):
         super(BatterySOHPredictorPaper, self).__init__()
-        
+        if tcn_channels is None:
+            tcn_channels = [32, 64]
+
         self.conv1d = nn.Conv1d(
-            in_channels=input_features, 
-            out_channels=cnn_out_channels, 
-            kernel_size=5, 
-            padding=2
+            in_channels=input_features,
+            out_channels=cnn_out_channels,
+            kernel_size=5,
+            stride=1,
+            padding=2,
         )
+        self.bn1 = nn.BatchNorm1d(cnn_out_channels)
         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
         self.relu = nn.ReLU()
         self.cnn_dropout = nn.Dropout(dropout)
@@ -140,6 +148,7 @@ class BatterySOHPredictorPaper(nn.Module):
     def forward(self, x):
         # 1D-CNN
         x_cnn = self.conv1d(x)
+        x_cnn = self.bn1(x_cnn)
         x_cnn = self.relu(x_cnn)
         x_cnn = self.pool(x_cnn)
         x_cnn = self.cnn_dropout(x_cnn)
@@ -162,18 +171,35 @@ class BatterySOHPredictorPaper(nn.Module):
         
         return soh, attn_weights
 
-if __name__ == '__main__':
-    batch_size = 8
-    features = 3
-    seq_len = 100
-    
-    x = torch.randn(batch_size, features, seq_len)
-    model = BatterySOHPredictorPaper()
+def build_paper_model(seq_len=300, lite=False):
+    """Build paper hybrid model. Default width targets ~0.35M parameters (paper Table 4)."""
+    from experiments.paper_config import (
+        PAPER_CNN_CHANNELS,
+        PAPER_LSTM_HIDDEN,
+        PAPER_LSTM_LAYERS,
+        PAPER_SEQ_LEN,
+        PAPER_TCN_CHANNELS,
+    )
+
+    if lite:
+        return BatterySOHPredictorPaper(input_features=3, cnn_out_channels=32, tcn_channels=[32, 64], lstm_hidden=64)
+
+    return BatterySOHPredictorPaper(
+        input_features=3,
+        cnn_out_channels=PAPER_CNN_CHANNELS,
+        tcn_channels=PAPER_TCN_CHANNELS,
+        lstm_hidden=PAPER_LSTM_HIDDEN,
+        num_lstm_layers=PAPER_LSTM_LAYERS,
+        dropout=0.2,
+    )
+
+
+if __name__ == "__main__":
+    seq_len = 300
+    x = torch.randn(4, 3, seq_len)
+    model = build_paper_model(seq_len=seq_len)
     soh, weights = model(x)
-    
-    print("--- Exact Paper Model Scaffolding Verified ---")
-    print(f"Input shape:      {x.shape}")
-    print(f"SOH Output shape: {soh.shape}")
-    print(f"Weights shape:    {weights.shape}")
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Total Trainable Parameters: {total_params / 1e6:.4f} Million")
+    params_m = sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6
+    print("--- Paper Model ---")
+    print(f"Input: {x.shape} -> SOH: {soh.shape}")
+    print(f"Parameters: {params_m:.4f} M (paper reports ~0.35 M)")

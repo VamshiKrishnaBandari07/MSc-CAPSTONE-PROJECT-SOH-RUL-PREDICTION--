@@ -6,12 +6,13 @@ import time
 import torch
 
 from benchmark import benchmark_model, estimate_model_macs
-from experiments.config import CHECKPOINT_DIR, EDGE_POWER_WATTS, NUM_CYCLES, PAPER_REFERENCE, SEQ_LEN
+from experiments.config import CHECKPOINT_DIR, EDGE_POWER_WATTS, PAPER_REFERENCE, SEQ_LEN
+from experiments.paper_config import PAPER_SEQ_LEN
 from experiments.io_utils import ensure_dirs, save_json
 from experiments.report import build_summary_payload, print_comparison_report
 from experiments.trainer import set_seed, train_msc_experiment, train_paper_experiment
 from model import BatteryHealthPredictor
-from model_paper import BatterySOHPredictorPaper
+from model_paper import build_paper_model
 from preprocess import BatteryDatasetLoader
 from preprocess_paper import PaperDatasetLoader
 from experiments.provenance import detect_data_sources, experiment_config_snapshot
@@ -38,18 +39,19 @@ def run_nasa_real_experiments(run_ablation=True):
     print(f"Device: {device.type.upper()} | Seed: 42")
     print("=" * 96)
 
-    paper_features, paper_soh = PaperDatasetLoader.load_dataset(dataset, num_cycles=NUM_CYCLES, seq_len=SEQ_LEN)
+    paper_features, paper_soh = PaperDatasetLoader.load_dataset(dataset, seq_len=PAPER_SEQ_LEN)
     msc_features, msc_soh, msc_rul = BatteryDatasetLoader.load_dataset(dataset, num_cycles=NUM_CYCLES, seq_len=SEQ_LEN)
 
     print(f"\nReal NASA cycles loaded: {len(paper_soh)} (paper features), {len(msc_soh)} (MSc features)")
 
     paper_ckpt = os.path.join(CHECKPOINT_DIR, "paper_nasa_real.pt")
     paper_result = train_paper_experiment(
-        BatterySOHPredictorPaper(input_features=3),
+        build_paper_model(seq_len=PAPER_SEQ_LEN),
         paper_features,
         paper_soh,
         dataset,
         paper_ckpt,
+        use_paper_protocol=True,
     )
 
     msc_ckpt = os.path.join(CHECKPOINT_DIR, "msc_nasa_real.pt")
@@ -78,14 +80,14 @@ def run_nasa_real_experiments(run_ablation=True):
             )
         )
 
-    model_paper = BatterySOHPredictorPaper().to(device)
+    model_paper = build_paper_model(seq_len=PAPER_SEQ_LEN).to(device)
     model_msc = BatteryHealthPredictor().to(device)
     benchmark_stats = {
         "paper": {
             "params_m": sum(p.numel() for p in model_paper.parameters() if p.requires_grad) / 1e6,
             "latency_ms": benchmark_model(model_paper, device),
             "energy_mj": 0,
-            "macs": estimate_model_macs("paper", SEQ_LEN),
+            "macs": estimate_model_macs("paper", PAPER_SEQ_LEN),
         },
         "msc": {
             "params_m": sum(p.numel() for p in model_msc.parameters() if p.requires_grad) / 1e6,

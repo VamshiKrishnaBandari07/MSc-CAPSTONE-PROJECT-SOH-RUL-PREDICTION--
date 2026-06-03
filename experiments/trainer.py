@@ -157,7 +157,49 @@ def _evaluate_msc_model(model, loader, device, max_rul):
     }
 
 
-def train_paper_experiment(model, features, soh, dataset_name, checkpoint_path, epochs=MAX_EPOCHS, batch_size=BATCH_SIZE):
+def train_paper_experiment(
+    model,
+    features,
+    soh,
+    dataset_name,
+    checkpoint_path,
+    epochs=None,
+    batch_size=None,
+    use_paper_protocol=True,
+):
+    """Train Experiment A — paper reproduction (MSE, SOH-only)."""
+    if use_paper_protocol:
+        from experiments.paper_config import (
+            PAPER_BATCH_SIZE,
+            PAPER_EARLY_STOPPING_PATIENCE,
+            PAPER_GRAD_CLIP_NORM,
+            PAPER_LEARNING_RATE,
+            PAPER_LR_SCHEDULER_FACTOR,
+            PAPER_LR_SCHEDULER_PATIENCE,
+            PAPER_MAX_EPOCHS,
+            PAPER_WEIGHT_DECAY,
+        )
+
+        epochs = epochs or PAPER_MAX_EPOCHS
+        batch_size = batch_size or PAPER_BATCH_SIZE
+        lr = PAPER_LEARNING_RATE
+        weight_decay = PAPER_WEIGHT_DECAY
+        grad_clip = PAPER_GRAD_CLIP_NORM
+        early_stop = EarlyStopping(patience=PAPER_EARLY_STOPPING_PATIENCE)
+        sched_factor = PAPER_LR_SCHEDULER_FACTOR
+        sched_patience = PAPER_LR_SCHEDULER_PATIENCE
+        feature_noise = 0.005  # training-time jitter on normalized ICA/DV/DC channels
+    else:
+        epochs = epochs or MAX_EPOCHS
+        batch_size = batch_size or BATCH_SIZE
+        lr = LEARNING_RATE
+        weight_decay = WEIGHT_DECAY
+        grad_clip = None
+        early_stop = EarlyStopping()
+        sched_factor = 0.5
+        sched_patience = 2
+        feature_noise = 0.0
+
     split_idx = split_indices(len(features))
     train_ds = PaperDataset(features[:split_idx], soh[:split_idx])
     val_ds = PaperDataset(features[split_idx:], soh[split_idx:])
@@ -168,9 +210,10 @@ def train_paper_experiment(model, features, soh, dataset_name, checkpoint_path, 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=2)
-    early_stop = EarlyStopping()
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=sched_factor, patience=sched_patience
+    )
 
     history = []
     best_metrics = None
@@ -181,10 +224,14 @@ def train_paper_experiment(model, features, soh, dataset_name, checkpoint_path, 
         train_loss = 0.0
         for features_batch, targets in train_loader:
             features_batch, targets = features_batch.to(device), targets.to(device)
+            if feature_noise > 0:
+                features_batch = features_batch + torch.randn_like(features_batch) * feature_noise
             optimizer.zero_grad()
             pred, _ = model(features_batch)
             loss = criterion(pred, targets)
             loss.backward()
+            if grad_clip is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             optimizer.step()
             train_loss += loss.item() * features_batch.size(0)
 
@@ -225,6 +272,7 @@ def train_paper_experiment(model, features, soh, dataset_name, checkpoint_path, 
     return {
         "dataset": dataset_name,
         "experiment": "paper_reproduction",
+        "methodology": "scientific_reports_2026" if use_paper_protocol else "lite",
         "best_epoch": best_epoch,
         "metrics": best_metrics,
         "history": history,

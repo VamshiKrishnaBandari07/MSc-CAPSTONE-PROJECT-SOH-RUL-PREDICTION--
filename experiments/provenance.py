@@ -68,18 +68,37 @@ def experiment_config_snapshot():
         TRAIN_RATIO,
     )
 
+    from experiments.paper_config import (
+        PAPER_BATCH_SIZE,
+        PAPER_MAX_EPOCHS,
+        PAPER_SEQ_LEN,
+        PAPER_TARGET_SOH_RMSE,
+    )
+
     return {
         "random_seed": RANDOM_SEED,
-        "seq_len": SEQ_LEN,
+        "experiment_a_paper": {
+            "features": ["ICA_dQdV", "DV_dVdQ", "DC_dIdV"],
+            "voltage_grid_points": PAPER_SEQ_LEN,
+            "voltage_range_v": [2.5, 4.2],
+            "sg_filter": {"window": 15, "polyorder": 3},
+            "max_epochs": PAPER_MAX_EPOCHS,
+            "batch_size": PAPER_BATCH_SIZE,
+            "loss": "MSE",
+            "target_soh_rmse": PAPER_TARGET_SOH_RMSE,
+            "reference_doi": "10.1038/s41598-026-39911-8",
+        },
+        "experiment_b_msc": {
+            "seq_len": SEQ_LEN,
+            "features": ["ICA", "DVA", "DCA"],
+            "max_epochs": MAX_EPOCHS,
+            "loss": "MSE + RUL + monotonicity",
+        },
         "num_cycles_synthetic_default": NUM_CYCLES,
         "train_ratio": TRAIN_RATIO,
-        "batch_size": BATCH_SIZE,
-        "learning_rate": LEARNING_RATE,
-        "max_epochs_local": MAX_EPOCHS,
         "paper_reported_epochs": PAPER_REPORTED_EPOCHS,
-        "early_stopping_patience": EARLY_STOPPING_PATIENCE,
+        "early_stopping_patience_msc": EARLY_STOPPING_PATIENCE,
         "msc_loss_weights": MSC_DEFAULTS,
-        "msc_early_stop": "soh_rmse + rul_weight * (rul_rmse / max_rul)",
         "edge_power_watts": EDGE_POWER_WATTS,
         "energy_formula": "energy_mJ = latency_ms * edge_power_watts",
     }

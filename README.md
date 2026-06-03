@@ -78,15 +78,22 @@ This penalises non-physical capacity recovery between consecutive cycles.
 
 ## Experimental design
 
-Two formal experiments are implemented with shared metrics, early stopping, and checkpoint export.
+This repository follows a **two-stage** capstone structure aligned with [Scientific Reports (2026)](https://doi.org/10.1038/s41598-026-39911-8):
 
-| Experiment | Script | Description |
+```text
+Experiment A  →  Reproduce published paper (SOH-only, ICA+DV+DC, RMSE ≈ 0.021)
+Experiment B  →  MSc extension (joint SOH+RUL + physics-informed loss)
+Experiment C  →  Ablation (B without monotonicity penalty)
+```
+
+| Experiment | Script | Methodology |
 | :--- | :--- | :--- |
-| **A — Paper reproduction (real NASA)** | `python run_nasa_real.py` | **Primary thesis result** — real B0005–B0018 `.mat`, SOH-only |
-| **A — Paper reproduction** | `python train_paper.py` | Paper pipeline on all datasets (NASA real if `.mat` present) |
-| **B — MSc extension** | `python train.py` | Joint SOH + RUL with physics-informed monotonicity loss |
-| **A + B + C + benchmark** | `python run_experiments.py` | Full suite: paper repro, MSc model, ablation, comparison report |
-| **Computational profile** | `python benchmark.py` | Parameters, latency, energy vs published baselines |
+| **A — Paper reproduction** | `python run_paper_experiment.py` | **Exact paper pipeline:** ICA, DV, DC on 300-point voltage grid; CNN–TCN–LSTM–Attention; MSE; ~200 epochs |
+| **A — NASA focus** | `python run_nasa_real.py` | Paper Experiment A on NASA B0005–B0018 only |
+| **B — MSc extension** | `python train.py` | Joint SOH + RUL + monotonicity loss; DCA features |
+| **Full suite** | `python run_experiments.py` | Experiments A + B + C + benchmark report |
+
+See **[docs/PAPER_METHODOLOGY.md](docs/PAPER_METHODOLOGY.md)** for paper-to-code mapping.
 
 **Outputs:**
 - `checkpoints/` — best model weights per dataset (`paper_nasa.pt`, `msc_nasa.pt`, …)
@@ -101,7 +108,7 @@ Run `python run_experiments.py` to regenerate all tables. Published reference va
 
 | Metric | Transformer (paper ref.) | Paper hybrid reproduction | MSc proposed (PI-MT) |
 | :--- | :---: | :---: | :---: |
-| **Trainable parameters** | 1.25 M | ~0.065 M | **~0.067 M** |
+| **Trainable parameters** | 1.25 M | **~0.39 M** (paper-aligned) | **~0.067 M** |
 | **Inference latency** | 12.4 ms | ~5 ms | **~5 ms** |
 | **Energy per sample** | 0.86 mJ | ~0.53 mJ | **~0.55 mJ** |
 | **Prediction targets** | SOH | SOH | **SOH + RUL** |
