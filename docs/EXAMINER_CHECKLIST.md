@@ -76,7 +76,7 @@
 | Checkpoints saved on best validation | Pass | `experiments/io_utils.py` |
 | JSON reports for thesis tables | Pass | `results/*.json` |
 | Thesis figures (PNG + PDF) | Pass | `generate_figures.py` |
-| Unit tests | Partial | `tests/test_metrics.py` — run `pytest tests/` |
+| Unit tests | Pass | `tests/test_metrics.py`, `tests/test_loaders.py` — run `pytest tests/` |
 | No spurious co-authors in git history | Pass | Author: Vamshi Krishna Bandari only |
 
 ## 7. Honest limitations (state in thesis Discussion)
@@ -93,6 +93,7 @@
 ```bash
 pip install -r requirements.txt
 pytest tests/ -v
+python scripts/verify_setup.py
 python download_data.py --all
 python run_experiments.py
 python generate_figures.py
@@ -103,6 +104,8 @@ python benchmark.py
 
 | File | Purpose |
 | :--- | :--- |
+| `docs/SUPERVISOR_REVIEW.md` | **Start here** — 5-min review + reproduction guide |
+| `docs/DATA_AND_GIT.md` | What is / is not pushed to GitHub |
 | `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md` | Paper repro metric history |
 | `docs/THESIS_RESULTS.md` | Results chapter draft |
 | `results/experiment_comparison_report.json` | Full real-data metrics (all datasets) |

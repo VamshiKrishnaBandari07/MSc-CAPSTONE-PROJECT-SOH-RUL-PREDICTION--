@@ -8,6 +8,9 @@
 **Repository:** `git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git`  
 **HTTPS clone:** `https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git`
 
+> **For supervisors / examiners:** Start with [`docs/SUPERVISOR_REVIEW.md`](docs/SUPERVISOR_REVIEW.md) (5-minute desk review).  
+> Raw datasets are **not in git** (standard practice) — see [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md). Verified metrics and thesis figures **are committed** in `results/`.
+
 ---
 
 ## Abstract

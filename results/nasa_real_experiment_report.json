@@ -1,0 +1,424 @@
+{
+  "paper_reference": {
+    "transformer": {
+      "label": "Transformer (paper baseline)",
+      "params_m": 1.25,
+      "latency_ms": 12.4,
+      "energy_mj": 0.86,
+      "soh_rmse": 0.038,
+      "targets": "SOH"
+    },
+    "paper_hybrid": {
+      "label": "Paper hybrid CNN-TCN-LSTM-Attn",
+      "params_m": 0.35,
+      "latency_ms": 6.1,
+      "energy_mj": 0.63,
+      "soh_rmse": 0.021,
+      "targets": "SOH"
+    }
+  },
+  "experiment_a_paper_reproduction": [
+    {
+      "dataset": "NASA",
+      "experiment": "paper_reproduction",
+      "best_epoch": 7,
+      "metrics": {
+        "rmse": 0.022032642177389778,
+        "mae": 0.018201668746769428,
+        "r2": 0.9238722148173071,
+        "mse": 0.000485437321316895,
+        "mono_violation_rate": 0.2204724409448819
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_mse": 0.029344944283366203,
+          "val_soh_rmse": 0.0812617752732178,
+          "val_soh_mae": 0.07078906707465649,
+          "val_soh_r2": -0.035577590534041637,
+          "mono_violation_rate": 0.4094488188976378
+        },
+        {
+          "epoch": 2,
+          "train_mse": 0.014800779345467335,
+          "val_soh_rmse": 0.07905658953804809,
+          "val_soh_mae": 0.06940359063446522,
+          "val_soh_r2": 0.01986435747623483,
+          "mono_violation_rate": 0.3779527559055118
+        },
+        {
+          "epoch": 3,
+          "train_mse": 0.009518603445947404,
+          "val_soh_rmse": 0.06475623669347533,
+          "val_soh_mae": 0.053554801736027,
+          "val_soh_r2": 0.34238269071852334,
+          "mono_violation_rate": 0.4251968503937008
+        },
+        {
+          "epoch": 4,
+          "train_mse": 0.004111883511462461,
+          "val_soh_rmse": 0.04803490576314985,
+          "val_soh_mae": 0.04011855321004987,
+          "val_soh_r2": 0.6381538815566197,
+          "mono_violation_rate": 0.4094488188976378
+        },
+        {
+          "epoch": 5,
+          "train_mse": 0.003346547552230438,
+          "val_soh_rmse": 0.05662462461576491,
+          "val_soh_mae": 0.04643276706337929,
+          "val_soh_r2": 0.49717055191429194,
+          "mono_violation_rate": 0.4330708661417323
+        },
+        {
+          "epoch": 6,
+          "train_mse": 0.0022625770643500127,
+          "val_soh_rmse": 0.03908100486569917,
+          "val_soh_mae": 0.03460069000720978,
+          "val_soh_r2": 0.7604801692605596,
+          "mono_violation_rate": 0.2755905511811024
+        },
+        {
+          "epoch": 7,
+          "train_mse": 0.0020350743319809904,
+          "val_soh_rmse": 0.022032642177389778,
+          "val_soh_mae": 0.018201668746769428,
+          "val_soh_r2": 0.9238722148173071,
+          "mono_violation_rate": 0.2204724409448819
+        },
+        {
+          "epoch": 8,
+          "train_mse": 0.0022894540413440478,
+          "val_soh_rmse": 0.0220894171910761,
+          "val_soh_mae": 0.018401273526251316,
+          "val_soh_r2": 0.9234793681669323,
+          "mono_violation_rate": 0.23622047244094488
+        },
+        {
+          "epoch": 9,
+          "train_mse": 0.0021399959837504496,
+          "val_soh_rmse": 0.0494272300938897,
+          "val_soh_mae": 0.040339524392038584,
+          "val_soh_r2": 0.6168731590214249,
+          "mono_violation_rate": 0.25984251968503935
+        },
+        {
+          "epoch": 10,
+          "train_mse": 0.0018812902840074357,
+          "val_soh_rmse": 0.030566230156676363,
+          "val_soh_mae": 0.02597863506525755,
+          "val_soh_r2": 0.8534810525769354,
+          "mono_violation_rate": 0.2677165354330709
+        },
+        {
+          "epoch": 11,
+          "train_mse": 0.0016847226643150188,
+          "val_soh_rmse": 0.0362701413121094,
+          "val_soh_mae": 0.03076893137767911,
+          "val_soh_r2": 0.7936955824589058,
+          "mono_violation_rate": 0.28346456692913385
+        },
+        {
+          "epoch": 12,
+          "train_mse": 0.0015228472418137128,
+          "val_soh_rmse": 0.025921435759528655,
+          "val_soh_mae": 0.02237709891051054,
+          "val_soh_r2": 0.8946272927533164,
+          "mono_violation_rate": 0.23622047244094488
+        }
+      ],
+      "checkpoint": "checkpoints\\paper_nasa_real.pt",
+      "train_cycles": 508,
+      "val_cycles": 128
+    }
+  ],
+  "experiment_b_msc_extension": [
+    {
+      "dataset": "NASA",
+      "experiment": "msc_physics_joint",
+      "use_physics_loss": true,
+      "best_epoch": 2,
+      "metrics": {
+        "soh": {
+          "rmse": 0.07397087840139976,
+          "mae": 0.0656809494830668,
+          "r2": 0.1419124829603987,
+          "mse": 0.00547169085147467,
+          "mono_violation_rate": 0.49606299212598426
+        },
+        "rul": {
+          "rmse": 35.232199655076954,
+          "mae": 30.582739422097802,
+          "r2": 0.09078344596101062,
+          "mse": 1241.3078925352045
+        }
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 0.16548927558043341,
+          "val_soh_rmse": 0.0803237645674105,
+          "val_soh_mae": 0.07036795653402805,
+          "val_soh_r2": -0.011808075504623927,
+          "val_rul_rmse": 37.044367799745885,
+          "val_rul_mae": 32.095511266961694,
+          "val_rul_r2": -0.005153044775254578,
+          "val_combined_score": 0.19057485920951134,
+          "mono_violation_rate": 0.49606299212598426
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.07464000837158734,
+          "val_soh_rmse": 0.07397087840139976,
+          "val_soh_mae": 0.0656809494830668,
+          "val_soh_r2": 0.1419124829603987,
+          "val_rul_rmse": 35.232199655076954,
+          "val_rul_mae": 30.582739422097802,
+          "val_rul_r2": 0.09078344596101062,
+          "val_combined_score": 0.17882861547008116,
+          "mono_violation_rate": 0.49606299212598426
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.06372169814417213,
+          "val_soh_rmse": 0.1400128802461055,
+          "val_soh_mae": 0.11988502135500312,
+          "val_soh_r2": -2.074298347420676,
+          "val_rul_rmse": 42.06004541079091,
+          "val_rul_mae": 34.690604189410806,
+          "val_rul_r2": -0.29576812391046126,
+          "val_combined_score": 0.2651915868258404,
+          "mono_violation_rate": 0.5118110236220472
+        },
+        {
+          "epoch": 4,
+          "train_loss": 0.06986993724318939,
+          "val_soh_rmse": 0.16340596375910388,
+          "val_soh_mae": 0.14669779734686017,
+          "val_soh_r2": -3.1874133927022736,
+          "val_rul_rmse": 46.02285172762974,
+          "val_rul_mae": 37.78732177056372,
+          "val_rul_r2": -0.5514395858387988,
+          "val_combined_score": 0.3003787367580019,
+          "mono_violation_rate": 0.49606299212598426
+        },
+        {
+          "epoch": 5,
+          "train_loss": 0.06042665799009049,
+          "val_soh_rmse": 0.16745814754509522,
+          "val_soh_mae": 0.15217650774866343,
+          "val_soh_r2": -3.3976696012266547,
+          "val_rul_rmse": 50.376938668942415,
+          "val_rul_mae": 41.44727090932429,
+          "val_rul_r2": -0.8588800335011046,
+          "val_combined_score": 0.3173895126312334,
+          "mono_violation_rate": 0.5118110236220472
+        },
+        {
+          "epoch": 6,
+          "train_loss": 0.056986892067893286,
+          "val_soh_rmse": 0.14868523821435445,
+          "val_soh_mae": 0.13187440391629934,
+          "val_soh_r2": -2.4669353101840166,
+          "val_rul_rmse": 49.95150657580039,
+          "val_rul_mae": 41.08858899213374,
+          "val_rul_r2": -0.8276162058265759,
+          "val_combined_score": 0.2973504363566175,
+          "mono_violation_rate": 0.5039370078740157
+        },
+        {
+          "epoch": 7,
+          "train_loss": 0.05472354208097214,
+          "val_soh_rmse": 0.1342531896058707,
+          "val_soh_mae": 0.11574555141851306,
+          "val_soh_r2": -1.8265668241581619,
+          "val_rul_rmse": 48.350001473981564,
+          "val_rul_mae": 39.760074028745294,
+          "val_rul_r2": -0.7123037226506805,
+          "val_combined_score": 0.27815200351653013,
+          "mono_violation_rate": 0.5039370078740157
+        }
+      ],
+      "checkpoint": "checkpoints\\msc_nasa_real.pt",
+      "max_rul": 168.0,
+      "train_cycles": 508,
+      "val_cycles": 128
+    }
+  ],
+  "experiment_c_ablation_no_physics": [
+    {
+      "dataset": "NASA",
+      "experiment": "msc_ablation_no_physics",
+      "use_physics_loss": false,
+      "best_epoch": 2,
+      "metrics": {
+        "soh": {
+          "rmse": 0.08136640610223093,
+          "mae": 0.07084293197840452,
+          "r2": -0.03824608006925034,
+          "mse": 0.0066204920419931645,
+          "mono_violation_rate": 0.49606299212598426
+        },
+        "rul": {
+          "rmse": 37.74456764471128,
+          "mae": 32.5466263089329,
+          "r2": -0.043510269704903015,
+          "mse": 1424.652386686186
+        }
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 0.11429711168734577,
+          "val_soh_rmse": 0.08712653877938231,
+          "val_soh_mae": 0.07275614375248551,
+          "val_soh_r2": -0.19044944011191145,
+          "val_rul_rmse": 37.6573646341077,
+          "val_rul_mae": 32.51189620234072,
+          "val_rul_r2": -0.03869410010833829,
+          "val_combined_score": 0.1992020287618457,
+          "mono_violation_rate": 0.4881889763779528
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.07312786080837837,
+          "val_soh_rmse": 0.08136640610223093,
+          "val_soh_mae": 0.07084293197840452,
+          "val_soh_r2": -0.03824608006925034,
+          "val_rul_rmse": 37.74456764471128,
+          "val_rul_mae": 32.5466263089329,
+          "val_rul_r2": -0.043510269704903015,
+          "val_combined_score": 0.19370142885434782,
+          "mono_violation_rate": 0.49606299212598426
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.07258358005962269,
+          "val_soh_rmse": 0.09554126365329364,
+          "val_soh_mae": 0.07490058429539204,
+          "val_soh_r2": -0.43150211619745193,
+          "val_rul_rmse": 39.128823968107184,
+          "val_rul_mae": 33.39932651259005,
+          "val_rul_r2": -0.12145385448080437,
+          "val_combined_score": 0.2119960968917079,
+          "mono_violation_rate": 0.49606299212598426
+        },
+        {
+          "epoch": 4,
+          "train_loss": 0.07317590803699935,
+          "val_soh_rmse": 0.10176674098983791,
+          "val_soh_mae": 0.07888103416189551,
+          "val_soh_r2": -0.6241336547138732,
+          "val_rul_rmse": 38.04512947285487,
+          "val_rul_mae": 32.724710861220956,
+          "val_rul_r2": -0.06019548491417903,
+          "val_combined_score": 0.21499629299238215,
+          "mono_violation_rate": 0.5275590551181102
+        },
+        {
+          "epoch": 5,
+          "train_loss": 0.06354318579702865,
+          "val_soh_rmse": 0.11485603637306792,
+          "val_soh_mae": 0.0909186415374279,
+          "val_soh_r2": -1.0687960676985249,
+          "val_rul_rmse": 38.51106275914973,
+          "val_rul_mae": 32.96868495084345,
+          "val_rul_r2": -0.08632262533456414,
+          "val_combined_score": 0.22947229458482307,
+          "mono_violation_rate": 0.5275590551181102
+        },
+        {
+          "epoch": 6,
+          "train_loss": 0.04904794227515208,
+          "val_soh_rmse": 0.1348826135766561,
+          "val_soh_mae": 0.11399209219962358,
+          "val_soh_r2": -1.8531327396342574,
+          "val_rul_rmse": 40.709036055342516,
+          "val_rul_mae": 34.329760471358895,
+          "val_rul_r2": -0.21386238934809998,
+          "val_combined_score": 0.2560404589794612,
+          "mono_violation_rate": 0.5433070866141733
+        },
+        {
+          "epoch": 7,
+          "train_loss": 0.04635782136882501,
+          "val_soh_rmse": 0.12863890214364773,
+          "val_soh_mae": 0.1064848736859858,
+          "val_soh_r2": -1.595103492632688,
+          "val_rul_rmse": 41.02374370389828,
+          "val_rul_mae": 34.47100378014147,
+          "val_rul_r2": -0.23270284427647514,
+          "val_combined_score": 0.25073337745286883,
+          "mono_violation_rate": 0.5275590551181102
+        }
+      ],
+      "checkpoint": "checkpoints\\msc_ablation_nasa_real.pt",
+      "max_rul": 168.0,
+      "train_cycles": 508,
+      "val_cycles": 128
+    }
+  ],
+  "computational_profile": {
+    "paper": {
+      "params_m": 0.065089,
+      "latency_ms": 2.09085733309621,
+      "energy_mj": 0.21535830530890962,
+      "macs": 3123680
+    },
+    "msc": {
+      "params_m": 0.067202,
+      "latency_ms": 2.012696000310825,
+      "energy_mj": 0.207307688032015,
+      "macs": 3125760
+    },
+    "published_transformer": {
+      "label": "Transformer (paper baseline)",
+      "params_m": 1.25,
+      "latency_ms": 12.4,
+      "energy_mj": 0.86,
+      "soh_rmse": 0.038,
+      "targets": "SOH"
+    },
+    "published_paper_hybrid": {
+      "label": "Paper hybrid CNN-TCN-LSTM-Attn",
+      "params_m": 0.35,
+      "latency_ms": 6.1,
+      "energy_mj": 0.63,
+      "soh_rmse": 0.021,
+      "targets": "SOH"
+    }
+  },
+  "data_source": "NASA_real_mat",
+  "data_sources": {
+    "NASA": {
+      "experiment_a_paper": "real_nasa_mat (636 discharge cycles)",
+      "experiment_b_msc": "real_nasa_mat (636 discharge cycles)"
+    },
+    "Oxford": {
+      "experiment_a_paper": "synthetic_fallback",
+      "experiment_b_msc": "synthetic_fallback"
+    },
+    "CALCE": {
+      "experiment_a_paper": "synthetic_fallback",
+      "experiment_b_msc": "synthetic_fallback"
+    }
+  },
+  "experiment_config": {
+    "random_seed": 42,
+    "seq_len": 100,
+    "num_cycles_synthetic_default": 150,
+    "train_ratio": 0.8,
+    "batch_size": 8,
+    "learning_rate": 0.001,
+    "max_epochs_local": 25,
+    "paper_reported_epochs": 300,
+    "early_stopping_patience": 5,
+    "msc_loss_weights": {
+      "rul_weight": 0.5,
+      "monotonicity_weight": 0.25
+    },
+    "msc_early_stop": "soh_rmse + rul_weight * (rul_rmse / max_rul)",
+    "edge_power_watts": 0.103,
+    "energy_formula": "energy_mJ = latency_ms * edge_power_watts"
+  }
+}

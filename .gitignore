@@ -7,7 +7,11 @@ __pycache__/
 .vscode/
 *.log
 checkpoints/
-results/
+results/*
+!results/*.json
+!results/figures/
+!results/figures/**
+results/validation_predictions.json
 data/**/*.mat
 data/**/*.xls
 data/**/*.xlsx

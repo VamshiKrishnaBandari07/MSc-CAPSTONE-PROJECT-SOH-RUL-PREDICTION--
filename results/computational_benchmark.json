@@ -1,0 +1,33 @@
+{
+  "device": "cpu",
+  "paper_reproduction": {
+    "params_m": 0.065089,
+    "latency_ms": 4.95110433291605,
+    "energy_mj": 0.5099637462903531,
+    "macs": 3123680
+  },
+  "msc_proposed": {
+    "params_m": 0.067202,
+    "latency_ms": 4.98428166625672,
+    "energy_mj": 0.5133810116244422,
+    "macs": 3125760
+  },
+  "published_baseline": {
+    "transformer": {
+      "label": "Transformer (paper baseline)",
+      "params_m": 1.25,
+      "latency_ms": 12.4,
+      "energy_mj": 0.86,
+      "soh_rmse": 0.038,
+      "targets": "SOH"
+    },
+    "paper_hybrid": {
+      "label": "Paper hybrid CNN-TCN-LSTM-Attn",
+      "params_m": 0.35,
+      "latency_ms": 6.1,
+      "energy_mj": 0.63,
+      "soh_rmse": 0.021,
+      "targets": "SOH"
+    }
+  }
+}
