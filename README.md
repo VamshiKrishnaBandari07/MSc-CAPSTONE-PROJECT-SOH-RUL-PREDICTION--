@@ -8,8 +8,7 @@
 **Repository:** `git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git`  
 **HTTPS clone:** `https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git`
 
-> **For supervisors / examiners:** Start with [`docs/SUPERVISOR_REVIEW.md`](docs/SUPERVISOR_REVIEW.md) (5-minute desk review).  
-> Raw datasets are **not in git** (standard practice) — see [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md). Verified metrics and thesis figures **are committed** in `results/`.
+> Raw datasets are **not in git** (standard practice) — see [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md). Verified metrics and thesis figures are in `results/`.
 
 ---
 
@@ -160,7 +159,7 @@ After running experiments, see `results/experiment_comparison_report.json` for p
 ├── checkpoints/        # Saved model weights (generated)
 ├── results/            # JSON experiment reports (generated)
 ├── tests/              # Unit tests (run: pytest tests/ -v)
-├── docs/               # Thesis results, paper comparison, examiner checklist
+├── docs/               # Thesis results and paper metric comparison
 ├── data/               # NASA, Oxford, CALCE raw data (optional)
 └── requirements.txt
 ```
@@ -279,13 +278,11 @@ python benchmark.py
 
 See **[docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md](docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md)** for initial vs improved results, changes tried, and the best stable local metric.
 
-For supervisor/viva preparation, see **[docs/EXAMINER_CHECKLIST.md](docs/EXAMINER_CHECKLIST.md)**.
-
 ---
 
 ## Project status and known limitations
 
-The codebase is **runnable end-to-end** and suitable as an MSc software artefact. Items a supervisor would typically expect before final submission:
+The codebase is **runnable end-to-end** and suitable as an MSc software artefact.
 
 | Area | Status | Notes |
 | :--- | :--- | :--- |
@@ -297,8 +294,7 @@ The codebase is **runnable end-to-end** and suitable as an MSc software artefact
 | Real NASA `.mat` loading | Complete | Auto-detects `.mat` files in `data/NASA/` |
 | Real Oxford `.mat` loading | Complete | Auto-download via `download_data.py --oxford` |
 | Real CALCE CS2 parsing | Complete | Auto-download via `download_data.py --calce` |
-| Unit tests | Partial | `pytest tests/ -v` |
-| Examiner review checklist | Complete | `docs/EXAMINER_CHECKLIST.md` |
+| Unit tests | Complete | `pytest tests/ -v` |
 | Saved model checkpoints | Complete | Exported to `checkpoints/` during training |
 | Experiment comparison report | Complete | `results/experiment_comparison_report.json` |
 | Ablation study (no physics loss) | Complete | Experiment C in `run_experiments.py` |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Environment and dataset health check for supervisors and examiners."""
+"""Environment and dataset health check."""
 
 import importlib
 import os
@@ -118,7 +118,7 @@ def main():
     check_imports()
     print("\nDatasets (raw files are NOT in git — download required):")
     check_datasets()
-    print("\nCommitted results (for supervisor review without re-training):")
+    print("\nCommitted results:")
     check_results()
     check_provenance()
     print("\nNext steps:")
