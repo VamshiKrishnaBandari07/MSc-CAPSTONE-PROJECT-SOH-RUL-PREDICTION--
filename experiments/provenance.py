@@ -11,28 +11,38 @@ def _has_nasa_mat_files():
     return os.path.isdir(nasa_dir) and any(f.lower().endswith(".mat") for f in os.listdir(nasa_dir))
 
 
-def _has_raw_files(dataset_name):
-    raw_path = os.path.join(os.getcwd(), "data", dataset_name)
-    if not os.path.isdir(raw_path):
+def _has_oxford_mat():
+    path = os.path.join(os.getcwd(), "data", "Oxford", "Oxford_Battery_Degradation_Dataset_1.mat")
+    return os.path.isfile(path) and os.path.getsize(path) > 1_000_000
+
+
+def _has_calce_cells():
+    calce_dir = os.path.join(os.getcwd(), "data", "CALCE")
+    if not os.path.isdir(calce_dir):
         return False
-    return any(
-        f.lower().endswith((".mat", ".csv", ".xls", ".xlsx"))
-        for f in os.listdir(raw_path)
-    )
+    for entry in os.listdir(calce_dir):
+        nested = os.path.join(calce_dir, entry, entry)
+        if os.path.isdir(nested) and any(f.lower().endswith((".xls", ".xlsx")) for f in os.listdir(nested)):
+            return True
+    return False
 
 
 def detect_data_sources():
-    """
-    Return per-dataset data provenance for Experiment A (paper) and B (MSc).
-    Used in JSON reports so examiners can see real vs synthetic at a glance.
-    """
     sources = {}
     for dataset in DATASETS:
         if dataset == "NASA" and _has_nasa_mat_files():
             cycle_count = count_nasa_discharge_cycles(os.path.join("data", "NASA"))
             label = f"real_nasa_mat ({cycle_count} discharge cycles)"
-        elif _has_raw_files(dataset):
-            label = "raw_files_present_parser_not_implemented_synthetic_fallback"
+        elif dataset == "Oxford" and _has_oxford_mat():
+            from experiments.oxford_loader import count_oxford_cycles
+
+            cycle_count = count_oxford_cycles(os.path.join("data", "Oxford"))
+            label = f"real_oxford_mat ({cycle_count} characterisation cycles)"
+        elif dataset == "CALCE" and _has_calce_cells():
+            from experiments.calce_loader import count_calce_cycles
+
+            cycle_count = count_calce_cycles(os.path.join("data", "CALCE"))
+            label = f"real_calce_xlsx ({cycle_count} discharge cycles)"
         else:
             label = "synthetic_fallback"
 

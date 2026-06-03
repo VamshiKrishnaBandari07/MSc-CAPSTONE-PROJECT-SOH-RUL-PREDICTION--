@@ -4,6 +4,13 @@ import numpy as np
 
 from experiments.config import RANDOM_SEED
 
+DATASET_SEED_OFFSET = {"NASA": 0, "Oxford": 100, "CALCE": 200}
+
+
+def dataset_rng(dataset_name):
+    offset = DATASET_SEED_OFFSET.get(dataset_name, 0)
+    return np.random.default_rng(RANDOM_SEED + offset)
+
 
 def generate_shared_labels(dataset_name="NASA", num_cycles=150):
     """
@@ -20,7 +27,7 @@ def generate_shared_labels(dataset_name="NASA", num_cycles=150):
         eol_threshold = 0.75
         capacity_fade_rate = 0.25
 
-    rng = np.random.default_rng(RANDOM_SEED + hash(dataset_name) % 1000)
+    rng = dataset_rng(dataset_name)
     soh_values = []
 
     for cycle in range(num_cycles):

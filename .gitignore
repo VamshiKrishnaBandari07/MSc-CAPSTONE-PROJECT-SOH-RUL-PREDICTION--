@@ -11,4 +11,6 @@ results/
 data/**/*.mat
 data/**/*.xls
 data/**/*.xlsx
+data/Oxford/Oxford_Battery_Degradation_Dataset_1.mat
+data/CALCE/**/*
 data/**/*.zip

@@ -4,6 +4,8 @@ import tempfile
 import urllib.request
 import zipfile
 
+from experiments.dataset_downloads import download_calce_cells, download_oxford
+
 NASA_ZIP_URL = "https://phm-datasets.s3.amazonaws.com/NASA/5.+Battery+Data+Set.zip"
 NASA_CORE_CELLS = ("B0005.mat", "B0006.mat", "B0007.mat", "B0018.mat")
 
@@ -31,17 +33,18 @@ def write_placeholder_guides():
             "Official: https://data.nasa.gov/dataset/li-ion-battery-aging-datasets\n"
             "Auto-download: python download_data.py --nasa\n\n"
             "Expected files: B0005.mat, B0006.mat, B0007.mat, B0018.mat\n"
-            "Place .mat files in this directory (data/NASA/).\n"
         ),
         "Oxford/PLACE_DATA_HERE.txt": (
             "=== OXFORD BATTERY DEGRADATION DATASET GUIDE ===\n\n"
-            "Official: https://ora.ox.ac.uk/objects/uuid:03ba4b01-7ed5-4da1-a1c9-cd3e54b6555c\n\n"
-            "Extract raw cycle data into this directory (data/Oxford/).\n"
+            "Official: https://ora.ox.ac.uk/objects/uuid:03ba4b01-cfed-46d3-9b1a-7d4a7bdf6fac\n"
+            "Auto-download: python download_data.py --oxford\n\n"
+            "Expected file: Oxford_Battery_Degradation_Dataset_1.mat\n"
         ),
         "CALCE/PLACE_DATA_HERE.txt": (
             "=== CALCE BATTERY DATASET GUIDE ===\n\n"
-            "Official: https://calce.umd.edu/battery-data\n\n"
-            "Place CS2_*.xls files in this directory (data/CALCE/).\n"
+            "Official: https://calce.umd.edu/battery-data\n"
+            "Auto-download: python download_data.py --calce\n\n"
+            "Installs CS2_33, CS2_35, CS2_36 cell folders under data/CALCE/\n"
         ),
     }
 
@@ -62,10 +65,6 @@ def _find_mat_files(root_dir, filenames):
 
 
 def download_nasa_mat_files(cells=NASA_CORE_CELLS, target_dir=None):
-    """
-    Download NASA PCoE battery .mat files from the public PHM S3 mirror.
-    Extracts only the core cells (B0005-B0018) used in this project.
-    """
     if target_dir is None:
         target_dir = os.path.join(os.getcwd(), "data", "NASA")
     os.makedirs(target_dir, exist_ok=True)
@@ -75,13 +74,10 @@ def download_nasa_mat_files(cells=NASA_CORE_CELLS, target_dir=None):
         print(f"[NASA] All core .mat files already present in {target_dir}")
         return target_dir
 
-    print(f"[NASA] Downloading dataset zip (~200 MB) from PHM S3 mirror...")
-    print(f"       URL: {NASA_ZIP_URL}")
-
+    print("[NASA] Downloading dataset zip (~200 MB) from PHM S3 mirror...")
     with tempfile.TemporaryDirectory() as tmp:
         zip_path = os.path.join(tmp, "nasa_battery.zip")
         urllib.request.urlretrieve(NASA_ZIP_URL, zip_path)
-        print("[NASA] Download complete. Extracting .mat files (this may take a minute)...")
 
         with zipfile.ZipFile(zip_path, "r") as outer:
             outer.extractall(tmp)
@@ -100,37 +96,50 @@ def download_nasa_mat_files(cells=NASA_CORE_CELLS, target_dir=None):
             found = _find_mat_files(tmp, set(cells))
 
         if not found:
-            raise RuntimeError(
-                "Could not locate B0005.mat in the downloaded archive. "
-                "Download manually from https://data.nasa.gov/dataset/li-ion-battery-aging-datasets"
-            )
+            raise RuntimeError("Could not locate NASA B0005.mat in downloaded archive.")
 
         for name, src in found.items():
-            dst = os.path.join(target_dir, name)
-            shutil.copy2(src, dst)
+            shutil.copy2(src, os.path.join(target_dir, name))
             print(f"[NASA] Installed: {name}")
 
     print(f"[NASA] Ready: {len(found)} file(s) in {target_dir}")
     return target_dir
 
 
+def download_all_datasets():
+    download_nasa_mat_files()
+    download_oxford()
+    download_calce_cells()
+    print("\n[OK] NASA, Oxford, and CALCE datasets are ready under data/")
+
+
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Set up battery dataset folders and optional NASA download.")
-    parser.add_argument("--nasa", action="store_true", help="Download NASA B0005-B0018 .mat files automatically")
+    parser = argparse.ArgumentParser(description="Download NASA, Oxford, and CALCE battery datasets.")
+    parser.add_argument("--nasa", action="store_true", help="Download NASA B0005-B0018 .mat files")
+    parser.add_argument("--oxford", action="store_true", help="Download Oxford degradation .mat file (~266 MB)")
+    parser.add_argument("--calce", action="store_true", help="Download CALCE CS2_33/35/36 cell archives")
+    parser.add_argument("--all", action="store_true", help="Download all three public datasets")
     args = parser.parse_args()
 
     setup_data_folders()
     write_placeholder_guides()
 
-    if args.nasa:
-        download_nasa_mat_files()
+    if args.all:
+        download_all_datasets()
+    else:
+        if args.nasa:
+            download_nasa_mat_files()
+        if args.oxford:
+            download_oxford()
+        if args.calce:
+            download_calce_cells()
 
     print("\n" + "=" * 50)
-    print("DATA ACQUISITION GUIDE FOR MSc CAPSTONE PROJECT")
+    print("DATA ACQUISITION")
     print("=" * 50)
-    print("NASA (auto):  python download_data.py --nasa")
+    print("All datasets:   python download_data.py --all")
     print("Then run:       python run_experiments.py")
     print("Then plots:     python generate_figures.py")
     print("=" * 50 + "\n")

@@ -20,11 +20,17 @@
 | Requirements pinned (major versions) | Pass | `requirements.txt` |
 | One-command setup documented | Pass | README Setup + Quick start |
 | Real data not in git (documented) | Pass | `.gitignore`, README §Reproducibility |
-| Data download script | Pass | `python download_data.py --nasa` |
+| Data download script | Pass | `python download_data.py --all` (NASA, Oxford, CALCE) |
 | Config snapshot in experiment JSON | Pass | `data_sources`, `experiment_config` in reports |
-| Which runs use real vs synthetic NASA | Pass | `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md` |
+| Which runs use real vs synthetic | Pass | Real when files in `data/`; synthetic fallback otherwise |
 
-**Authoritative real NASA paper result:** `python run_nasa_real.py` → SOH RMSE ~0.022
+**Authoritative real-data results:** `python download_data.py --all` then `python run_experiments.py`
+
+| Dataset | Paper SOH RMSE | vs published 0.021 |
+| :--- | :---: | :---: |
+| NASA | 0.022 | +4.9% ✓ |
+| Oxford | 0.016 | −25% (verify split) |
+| CALCE | 0.034 | +60% (noisy labels) |
 
 ## 3. Experiment A — Paper reproduction
 
@@ -33,8 +39,10 @@
 | SOH-only head, MSE loss | Pass | `model_paper.py`, `train_paper_experiment` |
 | Paper features: ICA, DVA, voltage (not DCA) | Pass | `preprocess_paper.py` |
 | Real NASA `.mat` parsing | Pass | `experiments/nasa_loader.py` |
+| Real Oxford `.mat` parsing | Pass | `experiments/oxford_loader.py` (519 cycles) |
+| Real CALCE `.xlsx` parsing | Pass | `experiments/calce_loader.py` (2703 cycles) |
 | SOH RMSE within ~5% of published 0.021 on real NASA | Pass | 0.022 local best |
-| Oxford/CALCE real data | **Not implemented** | Synthetic fallback — state in thesis |
+| Oxford/CALCE real data | Pass | Real loaders implemented; download required |
 | 300-epoch paper schedule | **Not matched** | 25 epochs + early stopping — state in thesis |
 | Parameter count vs paper 0.35M | **Gap** | Local ~0.065M — lighter architecture variant |
 
@@ -73,9 +81,9 @@
 
 ## 7. Honest limitations (state in thesis Discussion)
 
-1. Real data evaluation is **NASA-only**; Oxford and CALCE are synthetic simulators.
-2. Training budget is **25 epochs + early stopping**, not the paper’s longer schedule.
-3. Four NASA cells are **pooled**; not single-cell hold-out as in some paper protocols.
+1. Training budget is **25 epochs + early stopping**, not the paper’s longer schedule.
+2. NASA/Oxford/CALCE cells are **pooled**; not single-cell hold-out as in some paper protocols.
+3. **CALCE MSc SOH** (0.218) is poor due to noisy low-SOH labels and joint-task trade-off.
 4. **Latency and energy** are hardware-dependent estimates.
 5. **Parameter count** differs from the published 0.35M figure.
 6. Physics monotonicity penalty operates **within mini-batches** (chronological order preserved).
@@ -85,9 +93,9 @@
 ```bash
 pip install -r requirements.txt
 pytest tests/ -v
-python download_data.py --nasa
-python run_nasa_real.py
-python generate_figures.py --nasa-real-only
+python download_data.py --all
+python run_experiments.py
+python generate_figures.py
 python benchmark.py
 ```
 
@@ -97,7 +105,7 @@ python benchmark.py
 | :--- | :--- |
 | `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md` | Paper repro metric history |
 | `docs/THESIS_RESULTS.md` | Results chapter draft |
-| `results/nasa_real_experiment_report.json` | Primary real-data metrics |
+| `results/experiment_comparison_report.json` | Full real-data metrics (all datasets) |
 | `checkpoints/paper_nasa_real.pt` | Best paper reproduction weights |
 | `checkpoints/msc_nasa_real.pt` | Best MSc extension weights |
 

@@ -8,7 +8,7 @@
 
 ## 5.1 Experimental Setup
 
-> **Reproducibility:** Real datasets are not in git. NASA paper reproduction uses real B0005–B0018 `.mat` files via `run_nasa_real.py`. Oxford/CALCE paper runs use synthetic data. Training uses 25 epochs + early stopping, not the paper’s ~300-epoch schedule. See `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`.
+> **Reproducibility:** Real datasets are not in git. Download with `python download_data.py --all`. Paper reproduction uses real NASA (636 cycles), Oxford (519 cycles), and CALCE CS2 logs (2703 cycles). Training uses 25 epochs + early stopping, not the paper’s ~300-epoch schedule. See `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`.
 
 Two formal experiments were conducted:
 
@@ -17,52 +17,47 @@ Two formal experiments were conducted:
 | **A — Paper reproduction** | Validate implementation against published baselines | CNN-TCN-LSTM-Attention (SOH head) | MSE | ICA, DVA, voltage |
 | **B — MSc extension** | Joint SOH + RUL with physics-informed regularisation | CNN-TCN-LSTM-Attention (joint head) | MSE + monotonicity penalty | ICA, DVA, DCA |
 
-Evaluation used an 80/20 chronological train-validation split, early stopping (patience = 5), Adam optimiser (lr = 1e-3), and fixed random seed (42). Three datasets were evaluated: NASA PCoE, Oxford, and CALCE. Real NASA discharge data (B0005, B0006, B0007, B0018; 636 cycles) was used for the primary validation experiment.
+Evaluation used an 80/20 chronological train-validation split, early stopping (patience = 5), Adam optimiser (lr = 1e-3), and fixed random seed (42). Three datasets were evaluated on **real public data**: NASA PCoE (B0005–B0018, 636 cycles), Oxford Battery Degradation Dataset 1 (519 characterisation cycles), and CALCE CS2 (CS2_33, CS2_35, CS2_36; 2703 discharge cycles).
 
 ---
 
 ## 5.2 Experiment A — Paper Reproduction Results
 
-### 5.2.1 Real NASA Data (Primary Result)
+### 5.2.1 Real-Data Results (All Three Datasets)
 
-On the official NASA PCoE `.mat` files, the paper-exact reproduction achieved:
+| Dataset | Our SOH RMSE | Published paper hybrid | vs paper 0.021 | SOH R² | Mono. violation |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **NASA** | **0.022** | 0.021 | +4.9% | 0.924 | 22.0% |
+| **Oxford** | **0.016** | 0.021 | −25.1% | 0.947 | 39.8% |
+| **CALCE** | **0.034** | 0.021 | +60.2% | — | 42.4% |
 
-| Metric | Our reproduction | Published paper hybrid | Published Transformer |
-| :--- | :---: | :---: | :---: |
-| **SOH RMSE** | **0.022** | 0.021 | 0.038 |
-| **SOH MAE** | 0.018 | — | — |
-| **SOH R²** | 0.924 | — | — |
-| **Monotonicity violation rate** | 22.0% | — | — |
+**NASA (primary thesis benchmark):** The reproduced model achieves SOH RMSE within **4.9%** of the published paper hybrid result (0.022 vs 0.021), confirming that the implementation faithfully replicates the reference architecture. The result also outperforms the published Transformer baseline (0.038) by **42.1%**.
 
-The reproduced model achieves SOH RMSE within **4.9%** of the published paper hybrid result (0.022 vs 0.021), confirming that the implementation faithfully replicates the reference architecture. The result also outperforms the published Transformer baseline (0.038) by **42.1%**.
+**Oxford:** SOH RMSE **0.016** is better than the published 0.021; this may reflect differences in train/validation split or pooled multi-cell protocol vs the paper’s exact evaluation.
 
-*Figure reference:* `results/figures/fig_nasa_real_01_soh_trajectories.pdf`, `fig_nasa_real_04_soh_rmse_comparison.pdf`
+**CALCE:** SOH RMSE **0.034** is higher than the paper target; CALCE logs contain noisy capacity readings at very low SOH (min ~0.05), which increases label noise on the pooled validation split.
 
-### 5.2.2 Cross-Dataset Synthetic Evaluation
+*Figure reference:* `results/figures/fig01_soh_trajectories.pdf`, `fig04_soh_rmse_comparison.pdf`
 
-| Dataset | Paper repro. SOH RMSE | Published paper RMSE |
-| :--- | :---: | :---: |
-| NASA | 0.094 | 0.021 |
-| Oxford | 0.070 | 0.021 |
-| CALCE | 0.146 | 0.021 |
+### 5.2.2 Synthetic Fallback (No Downloads)
 
-Synthetic cross-dataset results are higher than real-data NASA results because the synthetic generators approximate — but do not replicate — real electrochemical trajectories. The real NASA experiment (Section 5.2.1) is the authoritative reproduction benchmark.
+When real files are absent, synthetic generators provide demo metrics only (SOH RMSE 0.07–0.15). These are **not** comparable to published baselines. Always run `python download_data.py --all` before thesis experiments.
 
 ---
 
 ## 5.3 Experiment B — MSc Extension Results
 
-### 5.3.1 Joint SOH + RUL Prediction (Synthetic Data)
+### 5.3.1 Joint SOH + RUL Prediction (Real Data)
 
-| Dataset | SOH RMSE | SOH R² | RUL RMSE (cycles) | Mono. violation |
-| :--- | :---: | :---: | :---: | :---: |
-| NASA | 0.107 | -20.21 | 58.68 | 55.2% |
-| Oxford | **0.032** | -2.45 | 54.77 | 44.8% |
-| CALCE | **0.021** | -0.02 | 63.93 | 51.7% |
+| Dataset | SOH RMSE | SOH R² | RUL RMSE (cycles) | Mono. violation | Paper SOH RMSE |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| NASA | 0.074 | 0.142 | 35.23 | 49.6% | 0.022 |
+| Oxford | **0.028** | 0.828 | 16.27 | 43.7% | 0.016 |
+| CALCE | 0.218 | −0.008 | 17.80 | 0.0% | 0.034 |
 
-On Oxford and CALCE synthetic data, the MSc model achieves SOH RMSE comparable to the published paper hybrid (0.021), while additionally predicting RUL. On NASA synthetic data, the joint head trades SOH accuracy for RUL capability.
+On Oxford real data, the MSc model achieves strong SOH R² (0.828) while additionally predicting RUL. On NASA, the joint head trades SOH accuracy for RUL capability (expected multi-task trade-off). CALCE MSc SOH is poor (0.218) due to noisy low-SOH labels and the joint-task objective on 2703 pooled cycles.
 
-### 5.3.2 Real NASA Data
+### 5.3.2 NASA Real-Data Focused Run (`run_nasa_real.py`)
 
 | Model | SOH RMSE | RUL RMSE | Additional capability |
 | :--- | :---: | :---: | :--- |
@@ -80,10 +75,10 @@ On real NASA data, the paper reproduction remains superior for SOH-only predicti
 | Dataset | SOH RMSE (no physics) | SOH RMSE (with physics) | Mono. reduction |
 | :--- | :---: | :---: | :---: |
 | NASA (real) | 0.081 | 0.074 | comparable |
-| Oxford (synthetic) | 0.028 | 0.032 | 0.0% |
-| CALCE (synthetic) | 0.095 | **0.021** | -3.5% |
+| Oxford (real) | 0.035 | **0.028** | +1.9% |
+| CALCE (real) | 0.257 | **0.218** | +48.5% |
 
-The physics-informed monotonicity penalty (γ = 0.25) demonstrates the largest benefit on CALCE synthetic data, where SOH RMSE improved from 0.095 to 0.021. On real NASA data, the physics model achieves lower SOH RMSE than the ablation (0.074 vs 0.081); monotonicity violation rates remain similar on this pooled multi-cell validation split.
+The physics-informed monotonicity penalty (γ = 0.25) improves SOH RMSE on all three real datasets. The largest benefit is on CALCE (0.257 → 0.218) with a 48.5% reduction in monotonicity violations.
 
 *Figure reference:* `results/figures/fig07_ablation_monotonicity.pdf`
 
@@ -124,15 +119,17 @@ The MSc extension introduces three novel elements over the paper baseline:
 
 ### 5.6.3 Limitations
 
-- RUL prediction accuracy (RMSE ~17–64 cycles depending on dataset) requires further tuning of the RUL label definition and loss weighting (α).
-- Monotonicity violation rates (~22–55%) indicate that per-cycle independent prediction does not fully enforce trajectory-level monotonicity; future work should apply sequence-level constraints.
-- Oxford and CALCE real-data parsers are not yet implemented; synthetic results serve as preliminary cross-dataset indicators only.
+- CALCE MSc SOH accuracy (RMSE 0.218) is limited by noisy capacity labels at very low SOH and joint-task trade-offs on 2703 pooled cycles.
+- Monotonicity violation rates (~22–50%) indicate that per-cycle independent prediction does not fully enforce trajectory-level monotonicity; future work should apply sequence-level constraints.
+- Oxford paper RMSE (0.016) is better than published 0.021 — verify split protocol matches the paper before claiming superiority.
 
 ### 5.6.4 Comparison with Published Work
 
 | Criterion | Transformer (2026) | Paper hybrid (2026) | This work (MSc) |
 | :--- | :---: | :---: | :---: |
-| SOH RMSE (NASA real) | 0.038 | 0.021 | **0.022** (repro) / 0.077 (joint) |
+| SOH RMSE (NASA real) | 0.038 | 0.021 | **0.022** (repro) / 0.074 (joint) |
+| SOH RMSE (Oxford real) | 0.038 | 0.021 | **0.016** (repro) / 0.028 (joint) |
+| SOH RMSE (CALCE real) | 0.038 | 0.021 | **0.034** (repro) / 0.218 (joint) |
 | RUL prediction | No | No | **Yes** |
 | Physics-informed loss | No | No | **Yes** |
 | Parameters (M) | 1.25 | 0.35 | **0.067** |
@@ -142,7 +139,7 @@ The MSc extension introduces three novel elements over the paper baseline:
 
 ## 5.7 Summary
 
-This chapter presented results from two experiments: a faithful paper reproduction achieving SOH RMSE = 0.022 on real NASA data (within 4.9% of the published 0.021), and an MSc extension enabling joint SOH + RUL prediction with physics-informed regularisation at 94.8% fewer parameters than the Transformer baseline. The computational profile confirms embedded BMS deployment feasibility, and the ablation study demonstrates the value of the monotonicity penalty for SOH fidelity on degraded cells.
+This chapter presented results from two experiments on **real NASA, Oxford, and CALCE data**: a faithful paper reproduction achieving SOH RMSE = 0.022 on NASA (within 4.9% of the published 0.021), and an MSc extension enabling joint SOH + RUL prediction with physics-informed regularisation at 94.8% fewer parameters than the Transformer baseline. The computational profile confirms embedded BMS deployment feasibility, and the ablation study demonstrates the value of the monotonicity penalty for SOH fidelity on degraded cells.
 
 ---
 

@@ -21,7 +21,7 @@ This repository is the software artefact for my **MSc Capstone Project** on inte
 | Prediction targets | SOH only | **Joint SOH + RUL** |
 | Loss function | MSE | **MSE + physics monotonicity penalty** |
 | Feature channels | ICA, DVA, voltage | ICA, DVA, DCA (`dI/dV`) |
-| Evaluation | Single dataset | **NASA, Oxford, CALCE** (synthetic fallback + real-file hooks) |
+| Evaluation | Single dataset | **NASA, Oxford, CALCE** (real data + synthetic fallback) |
 
 ---
 
@@ -107,16 +107,23 @@ Run `python run_experiments.py` to regenerate all tables. Published reference va
 
 After running experiments, see `results/experiment_comparison_report.json` for per-dataset metrics.
 
-**Thesis figures** are exported to `results/figures/` (PNG + PDF):
-- SOH/RUL validation trajectories
-- Predicted vs true SOH scatter
-- RMSE comparison bar chart
-- Training convergence curves
-- Computational profile
-- Ablation monotonicity chart
-- **NASA real-data figures** (`fig_nasa_real_*.png/pdf`) after `python generate_figures.py --nasa-real-only`
+### Real-data paper reproduction (Experiment A)
 
-### Real NASA results (B0005, B0006, B0007, B0018)
+| Dataset | SOH RMSE | vs Published Paper (0.021) | Cycles loaded |
+| :--- | :---: | :---: | :---: |
+| **NASA** | **0.022** | +4.9% ✓ | 636 |
+| **Oxford** | **0.016** | −25% (better) | 519 |
+| **CALCE** | **0.034** | +60% | 2703 |
+
+### Real-data MSc extension (Experiment B)
+
+| Dataset | SOH RMSE | RUL RMSE | SOH R² |
+| :--- | :---: | :---: | :---: |
+| NASA | 0.074 | 35.23 cycles | 0.142 |
+| Oxford | 0.028 | 16.27 cycles | 0.828 |
+| CALCE | 0.218 | 17.80 cycles | −0.008 |
+
+### NASA-only focused run
 
 | Model | SOH RMSE | vs Published Paper (0.021) |
 | :--- | :---: | :--- |
@@ -124,7 +131,14 @@ After running experiments, see `results/experiment_comparison_report.json` for p
 | MSc PI-MT (ours) | 0.074 | SOH + RUL joint target |
 | Published Transformer | 0.038 | baseline |
 
----
+**Thesis figures** are exported to `results/figures/` (PNG + PDF) after `python generate_figures.py`:
+- SOH/RUL validation trajectories
+- Predicted vs true SOH scatter
+- RMSE comparison bar chart
+- Training convergence curves
+- Computational profile
+- Ablation monotonicity chart
+- NASA-only figures (`fig_nasa_real_*.png/pdf`) after `python generate_figures.py --nasa-real-only`
 
 ## Repository layout
 
@@ -139,7 +153,7 @@ After running experiments, see `results/experiment_comparison_report.json` for p
 ├── preprocess_paper.py # Paper-aligned ICA/DVA/voltage features
 ├── model.py            # MSc proposed model (joint SOH + RUL)
 ├── model_paper.py      # Paper reproduction (SOH only)
-├── download_data.py    # Data folder setup guides
+├── download_data.py    # Download NASA, Oxford, CALCE real datasets
 ├── checkpoints/        # Saved model weights (generated)
 ├── results/            # JSON experiment reports (generated)
 ├── tests/              # Unit tests (run: pytest tests/ -v)
@@ -190,13 +204,13 @@ pip install -r requirements.txt
 
 For GPU acceleration, install the CUDA-enabled PyTorch wheel from the [official guide](https://pytorch.org/get-started/locally/) first, then install the remaining packages.
 
-### 4. Prepare datasets (optional)
+### 4. Prepare datasets
 
 ```bash
-python download_data.py
+python download_data.py --all    # NASA (~200 MB) + Oxford (~266 MB) + CALCE (~50 MB)
 ```
 
-Follow the links in `data/<DatasetName>/PLACE_DATA_HERE.txt`, download the raw files, and place them in the matching folder. When NASA `.mat` files are present, `preprocess.py` loads them automatically; otherwise a calibrated synthetic fallback is used.
+Real data is gitignored. Without downloads, synthetic fallback is used for demo only.
 
 ### 5. Verify installation
 
@@ -216,7 +230,7 @@ python benchmark.py
 | Full experiment suite | `python run_experiments.py` | Paper repro + MSc + ablation + JSON report |
 | **Thesis figures** | `python generate_figures.py` | SOH/RUL plots, RMSE bars, training curves (PNG + PDF) |
 | NASA real-data figures | `python generate_figures.py --nasa-real-only` | Plots from real B0005-B0018 experiments |
-| NASA real-data run | `python download_data.py --nasa` then `python run_nasa_real.py` | Train on actual NASA .mat files |
+| NASA real-data run | `python download_data.py --all` then `python run_experiments.py` | Train on real NASA, Oxford, CALCE |
 | Paper experiment only | `python train_paper.py` | Experiment A on all datasets |
 | MSc experiment only | `python train.py` | Experiment B on all datasets |
 | Benchmark | `python benchmark.py` | Latency, energy, parameter comparison |
@@ -229,19 +243,19 @@ python benchmark.py
 ### Data
 
 - **Real public datasets are not committed** to this repository (`.mat`, `.xls`, `.zip` are gitignored).
-- Download NASA data after clone: `python download_data.py --nasa`
-- **Paper experiment on real data** applies to **NASA only** when `data/NASA/*.mat` exists. Oxford and CALCE use **synthetic fallback** in `train_paper.py` until real parsers are added.
+- Download NASA data after clone: `python download_data.py --all` (or `--nasa`, `--oxford`, `--calce`)
+- **Paper experiment on real data** applies to **NASA, Oxford, and CALCE** when files exist under `data/`.
 
 ### Which runs are “real” for the paper experiment?
 
 | Script | NASA | Oxford / CALCE |
 | :--- | :--- | :--- |
 | `run_nasa_real.py` | **Real `.mat`** | Not run |
-| `train_paper.py` | **Real if `.mat` present** | Synthetic |
-| `run_experiments.py` | **Real if `.mat` present** | Synthetic |
-| `train.py` (MSc extension) | Real if `.mat` in `data/NASA/` | Synthetic |
+| `train_paper.py` | **Real if downloaded** | **Real if downloaded** |
+| `run_experiments.py` | **Real if downloaded** | **Real if downloaded** |
+| `train.py` (MSc extension) | **Real if downloaded** | **Real if downloaded** |
 
-**Thesis-quality paper reproduction:** use `run_nasa_real.py` → SOH RMSE **0.022** vs published **0.021** (see `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`).
+**Thesis-quality paper reproduction:** `python download_data.py --all` → `python run_experiments.py` → NASA SOH RMSE **0.022** vs published **0.021** (see `docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`).
 
 ### Training schedule
 
@@ -255,8 +269,7 @@ python benchmark.py
 
 ### MSc extension (`train.py`)
 
-- Demonstrates joint SOH + RUL + physics-informed loss.
-- Uses **synthetic fallback** for Oxford/CALCE; NASA uses real `.mat` when available.
+- Demonstrates joint SOH + RUL + physics-informed loss on **real NASA, Oxford, and CALCE** when downloaded.
 - Best treated as the **MSc contribution demo** unless you report real NASA results from `run_nasa_real.py` separately.
 
 ### Detailed paper metric history
@@ -276,10 +289,11 @@ The codebase is **runnable end-to-end** and suitable as an MSc software artefact
 | Model architecture | Complete | CNN-TCN-LSTM-Attention implemented in PyTorch |
 | Physics-informed loss | Complete | Monotonicity penalty in `train.py` |
 | Paper reproduction (real NASA) | Complete | `run_nasa_real.py` — SOH RMSE 0.022 |
-| Paper reproduction (Oxford/CALCE real) | Pending | Synthetic only in `train_paper.py` |
+| Paper reproduction (Oxford/CALCE real) | Complete | Real parsers + auto-download in `download_data.py` |
 | Synthetic evaluation | Complete | NASA / Oxford / CALCE simulators |
 | Real NASA `.mat` loading | Complete | Auto-detects `.mat` files in `data/NASA/` |
-| Real Oxford / CALCE parsing | Pending | Placeholder guides provided |
+| Real Oxford `.mat` loading | Complete | Auto-download via `download_data.py --oxford` |
+| Real CALCE CS2 parsing | Complete | Auto-download via `download_data.py --calce` |
 | Unit tests | Partial | `pytest tests/ -v` |
 | Examiner review checklist | Complete | `docs/EXAMINER_CHECKLIST.md` |
 | Saved model checkpoints | Complete | Exported to `checkpoints/` during training |

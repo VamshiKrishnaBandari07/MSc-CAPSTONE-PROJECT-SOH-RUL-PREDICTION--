@@ -5,7 +5,7 @@ import numpy as np
 import scipy.io
 import scipy.signal as signal
 
-from experiments.data import generate_shared_labels
+from experiments.data import dataset_rng, generate_shared_labels
 
 RANDOM_SEED = 42
 
@@ -86,6 +86,8 @@ def calculate_ic_dv_curves(voltage, capacity, current=None):
     return dq_dv_aligned, dv_dq_aligned, di_dv_aligned
 
 from experiments.nasa_loader import iter_nasa_discharge_cycles, iter_nasa_discharge_cycles_from_file
+from experiments.oxford_loader import iter_oxford_characterisation_cycles
+from experiments.calce_loader import _list_cell_dirs, iter_calce_discharge_cycles
 
 
 def _align_sequence(values, seq_len):
@@ -138,6 +140,108 @@ def _load_nasa_mat_files(data_dir, seq_len=100):
 
     return np.array(all_features, dtype=np.float32), all_soh, all_rul
 
+
+def _load_oxford_mat_files(data_dir, seq_len=100):
+    mat_path = os.path.join(data_dir, "Oxford_Battery_Degradation_Dataset_1.mat")
+    if not os.path.isfile(mat_path):
+        return None
+
+    import scipy.io
+
+    mat = scipy.io.loadmat(mat_path, squeeze_me=False, struct_as_record=False)
+    cell_keys = sorted(k for k in mat if k.startswith("Cell"))
+    all_features, all_soh, all_rul = [], [], []
+    eol_threshold = 0.70
+
+    from experiments.oxford_loader import _unwrap_struct, _cycle_sort_key, _segment_arrays
+
+    for cell_key in cell_keys:
+        cell = _unwrap_struct(mat[cell_key])
+        cycle_names = sorted(
+            (f for f in cell._fieldnames if str(f).startswith("cyc")),
+            key=_cycle_sort_key,
+        )
+        cell_features, cell_soh = [], []
+        initial_capacity = None
+
+        for cycle_name in cycle_names:
+            cycle = _unwrap_struct(getattr(cell, cycle_name))
+            if not hasattr(cycle, "C1ch"):
+                continue
+            voltage, capacity_mah, time = _segment_arrays(cycle.C1ch)
+            if len(voltage) < 10:
+                continue
+            cap_peak = float(np.nanmax(capacity_mah))
+            if cap_peak <= 1e-6:
+                continue
+            if initial_capacity is None:
+                initial_capacity = cap_peak
+            soh = float(np.clip(cap_peak / initial_capacity, 0.0, 1.2))
+            capacity_ah = capacity_mah / 1000.0
+            current = np.ones_like(voltage) * 0.74
+            ica, dva, dca = calculate_ic_dv_curves(voltage, capacity_ah, current)
+            cell_features.append(
+                np.stack(
+                    [_align_sequence(ica, seq_len), _align_sequence(dva, seq_len), _align_sequence(dca, seq_len)],
+                    axis=0,
+                )
+            )
+            cell_soh.append(soh)
+
+        if not cell_features:
+            continue
+
+        cell_soh = np.array(cell_soh, dtype=np.float32)
+        eol_idx = next((i for i, s in enumerate(cell_soh) if s <= eol_threshold), len(cell_soh))
+        cell_rul = np.array([max(0, eol_idx - i) for i in range(len(cell_soh))], dtype=np.float32)
+        all_features.extend(cell_features)
+        all_soh.extend(cell_soh.tolist())
+        all_rul.extend(cell_rul.tolist())
+
+    if not all_features:
+        return None
+    return (
+        np.array(all_features, dtype=np.float32),
+        np.array(all_soh, dtype=np.float32),
+        np.array(all_rul, dtype=np.float32),
+    )
+
+
+def _load_calce_mat_files(data_dir, seq_len=100):
+    all_features, all_soh, all_rul = [], [], []
+    eol_threshold = 0.70
+
+    for cell_dir in _list_cell_dirs(data_dir):
+        cell_features, cell_soh = [], []
+
+        for voltage, current, capacity_profile, soh in iter_calce_discharge_cycles(cell_dir):
+            ica, dva, dca = calculate_ic_dv_curves(voltage, capacity_profile, current)
+            cell_features.append(
+                np.stack(
+                    [_align_sequence(ica, seq_len), _align_sequence(dva, seq_len), _align_sequence(dca, seq_len)],
+                    axis=0,
+                )
+            )
+            cell_soh.append(soh)
+
+        if not cell_features:
+            continue
+
+        cell_soh = np.array(cell_soh, dtype=np.float32)
+        eol_idx = next((i for i, s in enumerate(cell_soh) if s <= eol_threshold), len(cell_soh))
+        cell_rul = np.array([max(0, eol_idx - i) for i in range(len(cell_soh))], dtype=np.float32)
+        all_features.extend(cell_features)
+        all_soh.extend(cell_soh.tolist())
+        all_rul.extend(cell_rul.tolist())
+
+    if not all_features:
+        return None
+    return (
+        np.array(all_features, dtype=np.float32),
+        np.array(all_soh, dtype=np.float32),
+        np.array(all_rul, dtype=np.float32),
+    )
+
 def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len=100):
     """
     Generates realistic synthetic charge-discharge cycles representing battery degradation
@@ -162,7 +266,7 @@ def generate_synthetic_battery_data(dataset_name="NASA", num_cycles=120, seq_len
         noise_level = 0.010
 
     soh_array, rul_array, _ = generate_shared_labels(dataset_name, num_cycles)
-    rng = np.random.default_rng(RANDOM_SEED + hash(dataset_name) % 1000)
+    rng = dataset_rng(dataset_name)
     base_v = np.linspace(3.2, 4.2, seq_len)
 
     for cycle in range(num_cycles):
@@ -204,7 +308,19 @@ class BatteryDatasetLoader:
                 print(f"[{dataset_name}] Loaded {len(nasa_data[0])} cycles from NASA .mat files.")
                 return nasa_data
 
-        if os.path.isdir(raw_path) and dataset_name != "NASA" and any(
+        if dataset_name == "Oxford" and os.path.isdir(raw_path):
+            oxford_data = _load_oxford_mat_files(raw_path, seq_len=seq_len)
+            if oxford_data is not None:
+                print(f"[{dataset_name}] Loaded {len(oxford_data[0])} cycles from Oxford .mat file.")
+                return oxford_data
+
+        if dataset_name == "CALCE" and os.path.isdir(raw_path):
+            calce_data = _load_calce_mat_files(raw_path, seq_len=seq_len)
+            if calce_data is not None:
+                print(f"[{dataset_name}] Loaded {len(calce_data[0])} cycles from CALCE CS2 logs.")
+                return calce_data
+
+        if os.path.isdir(raw_path) and dataset_name not in ("NASA", "Oxford", "CALCE") and any(
             f.lower().endswith((".mat", ".csv", ".xls", ".xlsx"))
             for f in os.listdir(raw_path)
         ):

@@ -5,7 +5,7 @@ import numpy as np
 import scipy.io
 import scipy.signal as signal
 
-from experiments.data import generate_shared_labels
+from experiments.data import dataset_rng, generate_shared_labels
 
 RANDOM_SEED = 42
 
@@ -61,12 +61,55 @@ def _align_sequence(values, seq_len):
 
 
 from experiments.nasa_loader import iter_nasa_discharge_cycles
+from experiments.oxford_loader import iter_oxford_characterisation_cycles
+from experiments.calce_loader import iter_calce_all_cells
 
 
 def _load_nasa_paper_features(data_dir, seq_len=100):
     features, soh_values = [], []
 
     for voltage, current, capacity_profile, soh in iter_nasa_discharge_cycles(data_dir):
+        ica, dva = calculate_ic_dv_curves_paper(voltage, capacity_profile)
+        voltage_norm = _min_max_scale(smooth_curve(voltage))
+        features.append(
+            np.stack(
+                [_align_sequence(ica, seq_len), _align_sequence(dva, seq_len), _align_sequence(voltage_norm, seq_len)],
+                axis=0,
+            )
+        )
+        soh_values.append(soh)
+
+    if not features:
+        return None
+    return np.array(features, dtype=np.float32), np.array(soh_values, dtype=np.float32)
+
+
+def _load_oxford_paper_features(data_dir, seq_len=100):
+    mat_path = os.path.join(data_dir, "Oxford_Battery_Degradation_Dataset_1.mat")
+    if not os.path.isfile(mat_path):
+        return None
+
+    features, soh_values = [], []
+    for voltage, _current, capacity_profile, soh in iter_oxford_characterisation_cycles(mat_path):
+        ica, dva = calculate_ic_dv_curves_paper(voltage, capacity_profile)
+        voltage_norm = _min_max_scale(smooth_curve(voltage))
+        features.append(
+            np.stack(
+                [_align_sequence(ica, seq_len), _align_sequence(dva, seq_len), _align_sequence(voltage_norm, seq_len)],
+                axis=0,
+            )
+        )
+        soh_values.append(soh)
+
+    if not features:
+        return None
+    return np.array(features, dtype=np.float32), np.array(soh_values, dtype=np.float32)
+
+
+def _load_calce_paper_features(data_dir, seq_len=100):
+    features, soh_values = [], []
+
+    for voltage, current, capacity_profile, soh in iter_calce_all_cells(data_dir):
         ica, dva = calculate_ic_dv_curves_paper(voltage, capacity_profile)
         voltage_norm = _min_max_scale(smooth_curve(voltage))
         features.append(
@@ -91,7 +134,7 @@ def generate_paper_synthetic_data(dataset_name="NASA", num_cycles=150, seq_len=1
         noise = 0.004
 
     soh_array, _, _ = generate_shared_labels(dataset_name, num_cycles)
-    rng = np.random.default_rng(RANDOM_SEED + hash(dataset_name) % 1000)
+    rng = dataset_rng(dataset_name)
     base_v = np.linspace(3.0, 4.2, seq_len)
     data = []
 
@@ -123,6 +166,18 @@ class PaperDatasetLoader:
             if nasa is not None:
                 print(f"[Paper | {dataset_name}] Loaded {len(nasa[0])} cycles from .mat files.")
                 return nasa
+
+        if dataset_name == "Oxford" and os.path.isdir(raw_path):
+            oxford = _load_oxford_paper_features(raw_path, seq_len)
+            if oxford is not None:
+                print(f"[Paper | {dataset_name}] Loaded {len(oxford[0])} characterisation cycles from Oxford .mat.")
+                return oxford
+
+        if dataset_name == "CALCE" and os.path.isdir(raw_path):
+            calce = _load_calce_paper_features(raw_path, seq_len)
+            if calce is not None:
+                print(f"[Paper | {dataset_name}] Loaded {len(calce[0])} discharge cycles from CALCE CS2 logs.")
+                return calce
 
         print(f"[Paper | {dataset_name}] Using paper-aligned synthetic simulator.")
         return generate_paper_synthetic_data(dataset_name, num_cycles, seq_len)
