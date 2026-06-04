@@ -10,7 +10,7 @@
       "DV_dVdQ",
       "DC_dIdV"
     ],
-    "note": "Report rebuilt by scripts/finish_pipeline.py from full_pipeline.log"
+    "note": "Stratified 5-fold CV, five independent runs (seeds 42-46); pooled OOF SOH RMSE per run."
   },
   "results": [
     {

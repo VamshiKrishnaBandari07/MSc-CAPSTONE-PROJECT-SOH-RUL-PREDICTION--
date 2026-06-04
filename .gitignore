@@ -61,3 +61,4 @@ results/figures/fig03_soh_scatter*
 results/figures/fig04_soh_rmse*
 models/
 scripts/run_full_pipeline.ps1
+scripts/git_commit_sole_author.py

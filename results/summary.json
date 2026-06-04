@@ -40,5 +40,5 @@
     "Oxford": "real_oxford_mat (519 characterisation cycles)",
     "CALCE": "real_calce_xlsx (2703 discharge cycles)"
   },
-  "reproducibility_note": "Full training completed (5 runs x 5-fold CV). Oxford mean RMSE 0.0215; NASA mean RMSE 0.0417 vs paper Table 4 target 0.021."
+  "reproducibility_note": "Full training completed (3 datasets, 5 independent runs, stratified 5-fold CV). Oxford mean RMSE 0.0215 aligns with paper hybrid 0.021; NASA mean RMSE 0.0417 does not match Table 4 (0.021). Results are not edited to match the article."
 }

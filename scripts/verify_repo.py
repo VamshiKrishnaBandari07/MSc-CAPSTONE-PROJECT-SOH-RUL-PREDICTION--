@@ -14,6 +14,20 @@ os.chdir(ROOT)
 FAILURES: list[str] = []
 
 
+def _is_tracked(rel_path: str) -> bool:
+    import subprocess
+
+    try:
+        r = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", rel_path],
+            cwd=ROOT,
+            capture_output=True,
+        )
+        return r.returncode == 0
+    except OSError:
+        return False
+
+
 def check(name: str, ok: bool, detail: str = "") -> None:
     mark = "PASS" if ok else "FAIL"
     line = f"  [{mark}] {name}"
@@ -46,8 +60,15 @@ def main() -> int:
         "model.py",
         "preprocess.py",
         "train.py",
+        "scripts/git_commit_sole_author.py",
     ):
         check(f"absent: {forbidden}", not os.path.isfile(forbidden))
+
+    check(
+        "untracked: validation_predictions.json",
+        not _is_tracked("results/validation_predictions.json"),
+        "git rm --cached results/validation_predictions.json",
+    )
 
     # 3. Imports
     for mod in ("numpy", "scipy", "torch", "matplotlib", "pandas", "openpyxl"):
@@ -75,6 +96,18 @@ def main() -> int:
         for r in report.get("results", []):
             m = r.get("metrics") or {}
             check(f"metrics.{r['dataset']}", m.get("rmse") is not None, f"rmse={m.get('rmse')}")
+            if report.get("eval_protocol") == "cv5":
+                check(
+                    f"runs.{r['dataset']}",
+                    r.get("independent_runs") == 5,
+                    f"independent_runs={r.get('independent_runs')}",
+                )
+        note = str((report.get("methodology") or {}).get("note", ""))
+        check(
+            "report.not_log_recovery",
+            "finish_pipeline" not in note.lower() and "full_pipeline.log" not in note.lower(),
+            note[:80] if note else "missing methodology.note",
+        )
     else:
         check("report exists", False, report_path)
 
