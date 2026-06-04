@@ -1,13 +1,22 @@
-# Results
+# Paper Reproduction — Results
 
-**Source:** `results/paper_experiment_report.json` · **Protocol:** 5-fold stratified CV · **Seed:** 42
+**Reference:** Rahman et al., *Scientific Reports* (2026) — [DOI 10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)  
+**Last synced:** 2026-06-04 12:57 UTC  
+**Source:** `results/paper_experiment_report.json`  
+**Protocol:** cv5
 
-| Dataset | SOH RMSE (mean ± std) | SOH R² |
-|:---|:---:|:---:|
-| Oxford | **0.0215 ± 0.0050** | 0.951 |
-| NASA | 0.0385 ± 0.0048 | 0.915 |
-| CALCE | 0.0673 ± 0.0101 | 0.950 |
+## SOH RMSE (stratified 5-fold CV)
 
-Published hybrid SOH RMSE: **0.021** (Oxford aligned; NASA not replicated).
+| Dataset | Our RMSE | Our R² | Paper hybrid | Transformer |
+|:---|:---:|:---:|:---:|:---:|
+| NASA | **0.0385 ± 0.0048** | 0.9152 | 0.021 | 0.038 |
+| Oxford | **0.0215 ± 0.0050** | 0.9512 | 0.021 | 0.038 |
+| CALCE | **0.0673 ± 0.0101** | 0.9497 | 0.021 | 0.038 |
 
-Figures: `results/figures/fig01`–`fig04`
+## Regenerate
+
+```powershell
+python run_paper_experiment.py --require-real --cpu
+python generate_figures.py
+python scripts/sync_results_docs.py
+```

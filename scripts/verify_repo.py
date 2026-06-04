@@ -67,6 +67,11 @@ def main() -> int:
         datasets = [r["dataset"] for r in report.get("results", [])]
         check("report.three_datasets", datasets == ["NASA", "Oxford", "CALCE"], str(datasets))
         check("report.eval_protocol", report.get("eval_protocol") == "cv5")
+        check(
+            "report.paper_doi",
+            report.get("paper_doi") == "10.1038/s41598-026-39911-8",
+            report.get("paper_doi", ""),
+        )
         for r in report.get("results", []):
             m = r.get("metrics") or {}
             check(f"metrics.{r['dataset']}", m.get("rmse") is not None, f"rmse={m.get('rmse')}")

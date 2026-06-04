@@ -1,47 +1,59 @@
-# Battery SOH Paper Reproduction
+# Deep Learning-Based Battery Health Prediction — Paper Reproduction
 
-[![Paper](https://img.shields.io/badge/Paper-Scientific%20Reports%202026-2ea44f)](https://doi.org/10.1038/s41598-026-39911-8)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-3776ab)](https://www.python.org)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c)](https://pytorch.org)
+[![Paper](https://img.shields.io/badge/Nature-Scientific%20Reports%202026-2ea44f)](https://www.nature.com/articles/s41598-026-39911-8)
+[![DOI](https://img.shields.io/badge/DOI-10.1038%2Fs41598--026--39911--8-blue)](https://doi.org/10.1038/s41598-026-39911-8)
 [![CI](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml/badge.svg)](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Academic reproduction of **Rahman et al. (2026)** — hybrid deep learning for lithium-ion **state-of-health (SOH)** on **NASA**, **Oxford**, and **CALCE**.
+**Reference (exact):** Rahman, T. et al., *Deep learning-based battery health prediction for enhancing electric vehicle performance*, **Scientific Reports** 16, 9871 (2026).  
+**URL:** https://www.nature.com/articles/s41598-026-39911-8 · **DOI:** https://doi.org/10.1038/s41598-026-39911-8
 
-| | |
-|:---|:---|
-| **Author** | [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07) |
-| **Institution** | University of Roehampton — MSc Artificial Intelligence |
-| **Repository** | https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION-- |
+**Author (this repository):** [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07) · University of Roehampton, MSc Artificial Intelligence
+
+This repository contains **only** the published **SOH** study (no MSc capstone RUL/joint code on GitHub).
 
 ---
 
-## Results (paper experiment — 5-fold CV, seed 42)
+## Point-by-point alignment with the paper
 
-| Dataset | SOH RMSE (mean ± std) | SOH R² |
-|:---|:---:|:---:|
-| **Oxford** | **0.0215 ± 0.0050** | 0.951 |
-| NASA | 0.0385 ± 0.0048 | 0.915 |
-| CALCE | 0.0673 ± 0.0101 | 0.950 |
-
-Published hybrid target: **0.021** (Oxford aligns; NASA does not — see note below).
-
-Artifacts: `results/paper_experiment_report.json` · Figures: `results/figures/fig01`–`fig04`
+| # | Paper requirement (Section 3 / Table 4) | This repository |
+|:---:|:---|:---|
+| 1 | **Task:** State-of-Health (SOH) estimation (RUL not in experiments) | `run_paper_experiment.py` — SOH head only |
+| 2 | **Datasets:** NASA PCoE, Oxford, CALCE | `experiments/nasa_loader.py`, `oxford_loader.py`, `calce_loader.py` |
+| 3 | **Label:** SOH(k) = Q_k / Q_BoL (Eq. 1) | Per-cell BoL in each loader |
+| 4 | **Features:** ICA (dQ/dV), DV (dV/dQ), DC (dI/dV) | `experiments/paper_preprocessing.py` |
+| 5 | **Denoising:** Savitzky–Golay window **15**, order **3** | `SG_WINDOW`, `SG_POLYORDER` in `paper_config.py` |
+| 6 | **Grid:** **300** points, **2.5–4.2 V** | `PAPER_SEQ_LEN`, voltage bounds |
+| 7 | **Scaling:** min–max on aligned signals | `extract_paper_cycle_tensor()` |
+| 8 | **Augmentation:** ±**10 mV** voltage jitter (train) | `PAPER_VOLTAGE_JITTER_V = 0.01` |
+| 9 | **Architecture:** 1D-CNN → TCN → LSTM → **attention** | `model_paper.py` |
+| 10 | **Loss:** MSE | `experiments/trainer.py` |
+| 11 | **Training:** Adam 1e-3, grad clip **5**, early stop, LR ×**0.5** | `experiments/paper_config.py` |
+| 12 | **Evaluation:** stratified **5-fold CV** (Table 4 protocol) | `experiments/cv.py` (default `--cv`) |
+| 13 | **Parameters:** ~**0.35 M** (paper) | ~**0.39 M** (`benchmark.py`) |
+| 14 | **Table 4 target (NASA PCoE):** RMSE **0.021**, R² **0.983** | See results table below |
 
 ---
 
-## Experimental workflow
+## Reproduced results (5-fold CV, seed 42, real data)
+
+| Dataset | SOH RMSE (mean ± std) | SOH R² | Paper hybrid (Table 4) |
+|:---|:---:|:---:|:---:|
+| NASA PCoE | 0.0385 ± 0.0048 | 0.915 | RMSE **0.021**, R² **0.983** |
+| **Oxford** | **0.0215 ± 0.0050** | **0.951** | Same order as paper **0.021** |
+| CALCE | 0.0673 ± 0.0101 | 0.950 | Cross-chemistry benchmark |
+
+**Honest note:** Methodology matches the article; **Oxford** RMSE is at paper level; **NASA pooled CV** does not yet reach Table 4 **0.021** (close to paper Transformer **0.038**). Metrics are in `results/paper_experiment_report.json` — not edited to match the paper.
+
+---
+
+## Workflow
 
 ```mermaid
-flowchart TB
-  D1[NASA] --> F[ICA / DV / DC]
-  D2[Oxford] --> F
-  D3[CALCE] --> F
-  F --> G[300-pt voltage grid]
-  G --> M[CNN - TCN - LSTM - Attention]
-  M --> CV[5-fold stratified CV]
-  CV --> R[RMSE and R2]
-  R --> OUT[JSON + figures]
+flowchart LR
+  A[NASA · Oxford · CALCE] --> B[SG + ICA/DV/DC + 300-pt grid]
+  B --> C[CNN–TCN–LSTM–Attention]
+  C --> D[5-fold CV]
+  D --> E[JSON + fig01–04]
 ```
 
 ---
@@ -55,60 +67,63 @@ cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--
 git lfs pull
 pip install -r requirements.txt
 python scripts/verify_repo.py
-```
-
-**Run paper experiment (all 3 datasets):**
-
-```powershell
 python run_paper_experiment.py --require-real --cpu
 python generate_figures.py
 ```
 
-Or: `powershell -File scripts/run_paper_pipeline.ps1` (~2–8 h CPU)
+Full pipeline: `powershell -File scripts/run_paper_pipeline.ps1`
 
 ---
 
-## Repository structure
+## What is on GitHub (paper only)
 
-```
-run_paper_experiment.py    # main experiment (NASA + Oxford + CALCE)
-model_paper.py             # hybrid architecture
-preprocess_paper.py        # ICA / DV / DC pipeline
-generate_figures.py        # fig01–fig04
-experiments/               # loaders, CV, training, metrics
-data/                      # datasets (Git LFS)
-results/                   # paper_experiment_report.json + figures
-tests/
-docs/                      # methodology, results, supervisor guide
-```
-
----
-
-## Reproducibility note
-
-**Methodology reproduced successfully** (features, model, 5-fold CV, hyperparameters). **Exact NASA RMSE 0.021 was not achieved** with this public-data pipeline; Oxford matches the published hybrid metric.
-
-For examiner review: [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md)
-
-| Document | Content |
+| Included | Excluded (local / gitignored) |
 |:---|:---|
-| [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper ↔ code |
-| [`docs/RESULTS.md`](docs/RESULTS.md) | Metrics table |
+| `run_paper_experiment.py`, `model_paper.py`, `preprocess_paper.py` | `local_archive/` (MSc SOH+RUL) |
+| `experiments/` loaders, CV, trainer, preprocessing | `model.py`, `train.py`, `run_experiments.py` |
+| `data/` via Git LFS | `checkpoints/`, thesis `.docx` |
+| `results/paper_experiment_report.json` | Legacy RUL/ablation figures |
+| `results/figures/fig01`–`fig04` | `paper_reproduction/` duplicate tree |
 
 ---
 
-## Reference & citation
+## Repository layout
 
-Rahman et al., *Scientific Reports* **16**, 9871 (2026). https://doi.org/10.1038/s41598-026-39911-8
+```
+run_paper_experiment.py    # Main experiment (3 datasets)
+model_paper.py             # Hybrid network
+preprocess_paper.py        # Feature pipeline entry
+experiments/               # Loaders, training, CV
+data/                      # NASA, Oxford, CALCE (LFS)
+results/                   # Metrics + figures
+tests/                     # Loaders, metrics, preprocessing
+docs/                      # SUPERVISOR_GUIDE, PAPER_METHODOLOGY, RESULTS
+scripts/verify_repo.py     # Point-by-point CI check
+```
+
+---
+
+## Verification
+
+```powershell
+python scripts/verify_repo.py
+python -m pytest tests/ -v
+```
+
+---
+
+## Citation
 
 ```bibtex
-@article{rahman2026hybrid,
-  title   = {Hybrid deep learning approach for battery state-of-health prediction},
+@article{Rahman2026,
+  author  = {Rahman, Tawfikur and Deb, Nibedita and Moniruzzaman, Md. and others},
+  title   = {Deep learning-based battery health prediction for enhancing electric vehicle performance},
   journal = {Scientific Reports},
   volume  = {16},
   pages   = {9871},
   year    = {2026},
-  doi     = {10.1038/s41598-026-39911-8}
+  doi     = {10.1038/s41598-026-39911-8},
+  url     = {https://www.nature.com/articles/s41598-026-39911-8}
 }
 ```
 

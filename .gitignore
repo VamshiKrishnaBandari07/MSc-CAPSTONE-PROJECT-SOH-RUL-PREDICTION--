@@ -53,6 +53,11 @@ results/figures/fig06*
 results/figures/fig07*
 docs/CAPSTONE_OVERVIEW.md
 docs/THESIS_RESULTS.md
+docs/GITHUB.md
+docs/DATA_AND_GIT.md
+docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md
 paper_reproduction/
+results/figures/fig03_soh_scatter*
+results/figures/fig04_soh_rmse*
 models/
 scripts/run_full_pipeline.ps1

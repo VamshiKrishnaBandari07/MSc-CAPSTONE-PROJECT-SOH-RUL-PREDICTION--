@@ -1,67 +1,39 @@
 # Supervisor guide — paper reproduction only
 
-**Author:** Vamshi Krishna Bandari · MSc Artificial Intelligence, University of Roehampton  
-**Paper:** Rahman et al., *Scientific Reports* (2026) — [10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
+**Student:** Vamshi Krishna Bandari · MSc AI, University of Roehampton  
+**Paper:** [Scientific Reports 16, 9871 (2026)](https://www.nature.com/articles/s41598-026-39911-8) · DOI [10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
 
-## What this repository contains
+## Scope
 
-| Included | Excluded (local only) |
-|:---|:---|
-| Hybrid SOH model (CNN–TCN–LSTM–attention) | Joint SOH+RUL MSc model |
-| NASA, Oxford, CALCE datasets (Git LFS) | `local_archive/` |
-| 5-fold CV experiment + figures | Thesis `.docx` |
+GitHub holds **only** Rahman et al. (2026) **SOH** reproduction. MSc joint SOH+RUL work is in `local_archive/` (not pushed).
 
-## Point-by-point verification
+## Point-by-point checklist
 
-Run:
+1. Three datasets loaded — NASA, Oxford, CALCE  
+2. SOH = Q_k / Q_BoL per cell  
+3. ICA, DV, DC + SG(15,3) + 300-point grid  
+4. Hybrid CNN–TCN–LSTM–attention  
+5. Stratified 5-fold CV, seed 42  
+6. Report JSON lists all three datasets  
+7. Figures fig01–fig04 present  
+8. No MSc scripts in repo root  
 
-```powershell
-python scripts/verify_repo.py
-python -m pytest tests/ -v
-```
+Run: `python scripts/verify_repo.py`
 
-| # | Check | Expected |
-|:---:|:---|:---|
-| 1 | Entry script | `run_paper_experiment.py` |
-| 2 | Three datasets in JSON | NASA, Oxford, CALCE |
-| 3 | Evaluation | `eval_protocol`: cv5 |
-| 4 | Figures | `fig01`–`fig04` only |
-| 5 | No MSc scripts | No `run_experiments.py`, `model.py` |
-| 6 | Oxford RMSE | ≈ **0.0215** (paper target 0.021) |
-| 7 | NASA RMSE | ≈ **0.0385** (not 0.021 — documented) |
+## Results vs Table 4 (NASA PCoE)
 
-## Results (committed)
+| Metric | Paper | Reproduction |
+|:---|:---:|:---:|
+| RMSE | 0.021 | 0.0385 ± 0.0048 |
+| R² | 0.983 | 0.915 |
 
-| Dataset | SOH RMSE (5-fold CV) | vs paper 0.021 |
-|:---|:---:|:---|
-| Oxford | **0.0215 ± 0.0050** | Aligned |
-| NASA | 0.0385 ± 0.0048 | Not replicated |
-| CALCE | 0.0673 ± 0.0101 | Supplementary |
+Oxford RMSE **0.0215 ± 0.0050** matches paper magnitude.
 
-**Statement:** Methodology reproduced; NASA numerical target not fully matched.
-
-## Clone and reproduce
+## Reproduce
 
 ```powershell
-git lfs install
-git clone https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--.git
-cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--
 git lfs pull
 pip install -r requirements.txt
 python run_paper_experiment.py --require-real --cpu
 python generate_figures.py
 ```
-
-Full pipeline: `powershell -File scripts/run_paper_pipeline.ps1`
-
-## Code map
-
-| Paper step | File |
-|:---|:---|
-| Features ICA/DV/DC | `experiments/paper_preprocessing.py` |
-| Loaders | `experiments/nasa_loader.py`, `oxford_loader.py`, `calce_loader.py` |
-| Model | `model_paper.py` |
-| Training + CV | `experiments/trainer.py`, `experiments/cv.py` |
-| Hyperparameters | `experiments/paper_config.py` |
-
-See [`PAPER_METHODOLOGY.md`](PAPER_METHODOLOGY.md) and [`RESULTS.md`](RESULTS.md).
