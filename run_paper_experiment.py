@@ -1,7 +1,5 @@
 """
-Experiment A — Paper reproduction (Scientific Reports 2026)
-
-PHASE 1 of MSc capstone — run this BEFORE Experiment B (MSc extension).
+Paper reproduction — Rahman et al., Scientific Reports (2026)
 
 Reference: https://doi.org/10.1038/s41598-026-39911-8
 
@@ -44,7 +42,7 @@ def run_paper_experiment(
     device = configure_runtime(force_cpu=force_cpu)
 
     print("\n" + "=" * 96)
-    print("PHASE 1 — EXPERIMENT A: PAPER REPRODUCTION (run before MSc extension)")
+    print("PAPER REPRODUCTION — Hybrid CNN-TCN-LSTM-Attention (SOH)")
     print("Scientific Reports (2026) | DOI: 10.1038/s41598-026-39911-8")
     print(f"Device: {device.type.upper()} | Grid: {PAPER_SEQ_LEN} pts | Target SOH RMSE: {PAPER_TARGET_SOH_RMSE}")
     print(f"Evaluation: {eval_protocol} ({'paper Table 4 protocol' if eval_protocol == 'cv5' else 'supplementary 80/20'})")
@@ -79,8 +77,7 @@ def run_paper_experiment(
         results.append(result)
 
     payload = {
-        "experiment": "A_paper_reproduction",
-        "phase": 1,
+        "experiment": "paper_reproduction",
         "device": device.type,
         "paper_doi": "10.1038/s41598-026-39911-8",
         "paper_target_soh_rmse": PAPER_TARGET_SOH_RMSE,
@@ -98,7 +95,6 @@ def run_paper_experiment(
         "data_sources": detect_data_sources(),
         "experiment_config": experiment_config_snapshot(),
         "published_reference": PAPER_REFERENCE,
-        "next_step": "PHASE 2: python run_experiments.py --msc-only (or full suite)",
     }
     report_path = save_json(payload, "paper_experiment_report.json")
 
@@ -116,12 +112,11 @@ def run_paper_experiment(
             f"R2: {m.get('r2', 0):.4f} | protocol: {result.get('eval_protocol')}"
         )
     print(f"\nFull report: {report_path}")
-    print("Next: PHASE 2 - MSc extension -> python run_experiments.py --msc-only --require-real --cpu")
     return payload
 
 
 if __name__ == "__main__":
-    args = parse_runtime_args("PHASE 1 — Experiment A paper reproduction (CPU/GPU)")
+    args = parse_runtime_args("Paper SOH reproduction (CPU/GPU)")
     datasets = (args.dataset,) if args.dataset else DATASETS
     protocol = paper_eval_protocol(args) or PAPER_DEFAULT_EVAL
     started = time.time()

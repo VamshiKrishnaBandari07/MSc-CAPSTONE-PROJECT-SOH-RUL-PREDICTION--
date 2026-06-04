@@ -140,7 +140,7 @@ def main():
     print("DATA ACQUISITION")
     print("=" * 50)
     print("All datasets:   python download_data.py --all")
-    print("Then run:       python run_experiments.py")
+    print("Then run:       python run_paper_experiment.py --require-real --cpu")
     print("Then plots:     python generate_figures.py")
     print("=" * 50 + "\n")
 

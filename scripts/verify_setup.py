@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Environment and dataset health check."""
+"""Environment and dataset health check (paper reproduction)."""
 
 import importlib
+import json
 import os
 import sys
 
@@ -60,7 +61,11 @@ def check_datasets():
     for name, path, ext, min_count, hint in checks:
         if name == "Oxford":
             ok = os.path.isfile(path) and os.path.getsize(path) > 1_000_000
-            _status(ok, f"dataset: {name}", hint if not ok else f"file present ({os.path.getsize(path) // 1_000_000} MB)")
+            _status(
+                ok,
+                f"dataset: {name}",
+                hint if not ok else f"file present ({os.path.getsize(path) // 1_000_000} MB)",
+            )
             continue
 
         if not os.path.isdir(path):
@@ -86,51 +91,50 @@ def check_results():
     root = os.getcwd()
     files = [
         "results/paper_experiment_report.json",
-        "results/experiment_comparison_report.json",
         "results/computational_benchmark.json",
-        "results/figures/fig04_soh_rmse_comparison.pdf",
+        "results/figures/fig03_soh_rmse_comparison.pdf",
     ]
     for rel in files:
         path = os.path.join(root, rel)
-        _status(os.path.isfile(path), f"artifact: {rel}", "run run_experiments.py" if not os.path.isfile(path) else "")
+        _status(
+            os.path.isfile(path),
+            f"artifact: {rel}",
+            "run run_paper_experiment.py && generate_figures.py" if not os.path.isfile(path) else "",
+        )
 
 
 def check_provenance():
-    import json
-
-    report_path = os.path.join(os.getcwd(), "results", "experiment_comparison_report.json")
+    report_path = os.path.join(os.getcwd(), "results", "paper_experiment_report.json")
     if not os.path.isfile(report_path):
         return
     with open(report_path, encoding="utf-8") as handle:
         report = json.load(handle)
     sources = report.get("data_sources", {})
-    print("\n  Data sources recorded in experiment report:")
-    for dataset, info in sources.items():
-        paper = info.get("experiment_a_paper", "unknown")
-        print(f"    {dataset}: {paper}")
+    if sources:
+        print("\n  Data sources (paper report):")
+        for dataset, info in sources.items():
+            print(f"    {dataset}: {info}")
 
 
 def main():
     print("=" * 60)
-    print("MSc Capstone — Setup Verification")
+    print("Paper SOH Reproduction — Setup Verification")
     print("=" * 60)
     print("\nEnvironment:")
     check_python()
     check_imports()
-    print("\nDatasets (raw files are NOT in git — download required):")
+    print("\nDatasets (raw files via Git LFS after clone):")
     check_datasets()
     print("\nCommitted results:")
     check_results()
     check_provenance()
-    print("\nNext steps (run in order):")
-    print("  python download_data.py --all")
-    print("  python run_paper_experiment.py --require-real --cpu   # Phase 1: Paper")
-    print("  python run_experiments.py --msc-only --require-real --cpu   # Phase 2: MSc")
+    print("\nReproduction (single pipeline):")
+    print("  git lfs pull")
+    print("  python run_paper_experiment.py --require-real --cpu")
     print("  python generate_figures.py")
     print("  python scripts/sync_results_docs.py")
     print("  python -m pytest tests/ -v")
-    print("\nOr one command: powershell -ExecutionPolicy Bypass -File scripts/run_full_pipeline.ps1")
-    print("\nDocs: docs/CAPSTONE_OVERVIEW.md | docs/RESULTS.md")
+    print("\nDocs: docs/PAPER_METHODOLOGY.md | docs/RESULTS.md | docs/AUDIT_REPORT.md")
     print("=" * 60)
 
 

@@ -7,13 +7,32 @@ __pycache__/
 .vscode/
 *.log
 checkpoints/
+.pytest_cache/
+
+# Local-only (MSc extension, thesis, rewrite temp)
+local_archive/
+.git-rewrite/
+*.docx
+~$*.docx
+MSc_Report*
+docs/MSc_REPORT*
+
+# Results: keep committed JSON + figures; ignore ephemeral runs
 results/*
 !results/*.json
 !results/figures/
 !results/figures/**
 results/validation_predictions.json
-*.docx
-~$*.docx
-MSc_Report*
-docs/MSc_REPORT*
+results/full_pipeline.log
+results/experiment_run.log
+
+# Large downloads (use Git LFS for committed raw data)
 data/**/*.zip
+
+# Legacy MSc scripts at repo root (if copied back locally)
+/model.py
+/preprocess.py
+/train.py
+/run_experiments.py
+/run_nasa_real.py
+/train_paper.py

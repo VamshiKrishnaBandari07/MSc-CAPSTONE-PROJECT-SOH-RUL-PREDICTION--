@@ -1,23 +1,20 @@
-# Experiment A — Paper Methodology Alignment
+# Paper Methodology Alignment
 
 **Reference:** Rahman et al., *Scientific Reports* **16**, 9871 (2026).  
 **DOI:** [10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
 
-## Two-phase MSc capstone (required order)
+This repository implements **only** the published hybrid SOH prediction pipeline (no joint RUL or MSc extensions on GitHub).
 
-| Phase | Experiment | Script | When to run |
-|:---:|:---|:---|:---|
-| **1** | **A — Paper reproduction** | `run_paper_experiment.py` | **First** — validate against published 0.021 RMSE |
-| **2** | **B — MSc extension** | `run_experiments.py --msc-only` | **After A** — joint SOH+RUL + physics loss |
-| **2** | **C — Ablation** | included in `--msc-only` / full suite | Compare with/without monotonicity penalty |
+## Reproduction command
 
 ```powershell
+git lfs pull
 python download_data.py --all
-python run_paper_experiment.py --require-real --cpu          # PHASE 1 (5-fold CV)
-python run_experiments.py --msc-only --require-real --cpu    # PHASE 2
+python run_paper_experiment.py --require-real --cpu
+python generate_figures.py
 ```
 
-Fast supplementary run (not paper Table 4 protocol): add `--chrono` to Experiment A.
+Fast supplementary run (not paper Table 4 protocol): add `--chrono` or `--dataset NASA`.
 
 ---
 
@@ -38,21 +35,9 @@ Fast supplementary run (not paper Table 4 protocol): add `--chrono` to Experimen
 | LR reduce on plateau (×0.5) | `ReduceLROnPlateau` |
 | ~180–220 epochs, early stopping patience 20 | `PAPER_MAX_EPOCHS=200` |
 | ±10 mV augmentation + feature noise | `PAPER_VOLTAGE_JITTER_V`, `PAPER_FEATURE_NOISE` |
-| **Stratified 5-fold CV** | `experiments/cv.py` — **default** (`--cv` / no flag) |
+| **Stratified 5-fold CV** | `experiments/cv.py` — default (`--cv`) |
 | NASA, Oxford, CALCE | `download_data.py --all` |
 | ~0.35 M parameters | `build_paper_model()` ≈ 0.39 M |
-
----
-
-## Experiment B (MSc — not in paper)
-
-| | Experiment A | Experiment B |
-|:---|:---|:---|
-| Script | `run_paper_experiment.py` | `train.py` / `run_experiments.py --msc-only` |
-| Model | `model_paper.py` | `model.py` |
-| Features | ICA, DV, DC (300-pt grid) | ICA, DVA, DCA (100-pt grid) |
-| Outputs | SOH only | **Joint SOH + RUL** |
-| Loss | MSE | MSE + RUL + **monotonicity penalty** |
 
 ---
 
@@ -60,31 +45,22 @@ Fast supplementary run (not paper Table 4 protocol): add `--chrono` to Experimen
 
 | Protocol | Flag | Use case |
 |:---|:---|:---|
-| **Stratified 5-fold CV** | default / `--cv` | **Paper comparison** (target RMSE 0.021) |
+| **Stratified 5-fold CV** | default / `--cv` | **Paper comparison** (target RMSE 0.021 on NASA pooled) |
 | Chronological 80/20 | `--chrono` | Fast local debugging on CPU |
 
-State in thesis: primary metrics use **5-fold CV**; chronological results are supplementary.
+Primary reported metrics in `results/paper_experiment_report.json` use **5-fold CV**.
 
 ---
 
-## Commands
+## Module map (logical `src/` layout)
 
-```powershell
-# PHASE 1 — paper (real data, 5-fold CV)
-python run_paper_experiment.py --require-real --cpu
-
-# PHASE 1 — NASA only, fast chronological
-python run_paper_experiment.py --require-real --cpu --dataset NASA --chrono
-
-# PHASE 2 — MSc after paper
-python run_experiments.py --msc-only --require-real --cpu
-
-# Full A+B+C (long on CPU with 5-fold)
-python run_experiments.py --require-real --cpu
-```
-
-Reports: `results/paper_experiment_report.json`, `results/experiment_comparison_report.json`
+| Logical area | Path |
+|:---|:---|
+| Data preprocessing | `preprocess_paper.py`, `experiments/paper_preprocessing.py`, `experiments/*_loader.py` |
+| Training | `experiments/trainer.py`, `run_paper_experiment.py` |
+| Evaluation | `experiments/cv.py`, `experiments/metrics.py` |
+| Utils | `experiments/io_utils.py`, `experiments/runtime.py`, `experiments/config.py` |
 
 ---
 
-*Author: Vamshi Krishna Bandari — MSc Capstone*
+*Author: Vamshi Krishna Bandari — MSc Capstone (paper reproduction artefact)*

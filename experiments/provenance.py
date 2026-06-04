@@ -1,4 +1,4 @@
-"""Detect whether real dataset files are available for each experiment path."""
+"""Detect whether real dataset files are available."""
 
 import os
 
@@ -44,30 +44,12 @@ def detect_data_sources():
             cycle_count = count_calce_cycles(os.path.join("data", "CALCE"))
             label = f"real_calce_xlsx ({cycle_count} discharge cycles)"
         else:
-            label = "synthetic_fallback"
-
-        sources[dataset] = {
-            "experiment_a_paper": label,
-            "experiment_b_msc": label,
-        }
+            label = "missing_or_synthetic"
+        sources[dataset] = label
     return sources
 
 
 def experiment_config_snapshot():
-    from experiments.config import (
-        BATCH_SIZE,
-        EARLY_STOPPING_PATIENCE,
-        EDGE_POWER_WATTS,
-        LEARNING_RATE,
-        MAX_EPOCHS,
-        MSC_DEFAULTS,
-        NUM_CYCLES,
-        PAPER_REPORTED_EPOCHS,
-        RANDOM_SEED,
-        SEQ_LEN,
-        TRAIN_RATIO,
-    )
-
     from experiments.paper_config import (
         PAPER_BATCH_SIZE,
         PAPER_CV_FOLDS,
@@ -76,10 +58,11 @@ def experiment_config_snapshot():
         PAPER_SEQ_LEN,
         PAPER_TARGET_SOH_RMSE,
     )
+    from experiments.config import RANDOM_SEED
 
     return {
         "random_seed": RANDOM_SEED,
-        "experiment_a_paper": {
+        "paper_reproduction": {
             "features": ["ICA_dQdV", "DV_dVdQ", "DC_dIdV"],
             "voltage_grid_points": PAPER_SEQ_LEN,
             "voltage_range_v": [2.5, 4.2],
@@ -92,17 +75,4 @@ def experiment_config_snapshot():
             "cv_folds": PAPER_CV_FOLDS,
             "reference_doi": "10.1038/s41598-026-39911-8",
         },
-        "experiment_b_msc": {
-            "seq_len": SEQ_LEN,
-            "features": ["ICA", "DVA", "DCA"],
-            "max_epochs": MAX_EPOCHS,
-            "loss": "MSE + RUL + monotonicity",
-        },
-        "num_cycles_synthetic_default": NUM_CYCLES,
-        "train_ratio": TRAIN_RATIO,
-        "paper_reported_epochs": PAPER_REPORTED_EPOCHS,
-        "early_stopping_patience_msc": EARLY_STOPPING_PATIENCE,
-        "msc_loss_weights": MSC_DEFAULTS,
-        "edge_power_watts": EDGE_POWER_WATTS,
-        "energy_formula": "energy_mJ = latency_ms * edge_power_watts",
     }

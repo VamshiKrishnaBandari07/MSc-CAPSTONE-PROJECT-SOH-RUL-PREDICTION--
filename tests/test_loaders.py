@@ -60,5 +60,4 @@ def test_provenance_detects_missing_data():
     sources = detect_data_sources()
     assert set(sources.keys()) == {"NASA", "Oxford", "CALCE"}
     for info in sources.values():
-        assert "experiment_a_paper" in info
-        assert "experiment_b_msc" in info
+        assert info.startswith("real_") or info == "missing_or_synthetic"
