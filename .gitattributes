@@ -1,0 +1,4 @@
+# Large battery datasets — Git LFS (Oxford .mat exceeds GitHub 100 MB file limit)
+data/**/*.mat filter=lfs diff=lfs merge=lfs -text
+data/**/*.xlsx filter=lfs diff=lfs merge=lfs -text
+data/**/*.xls filter=lfs diff=lfs merge=lfs -text

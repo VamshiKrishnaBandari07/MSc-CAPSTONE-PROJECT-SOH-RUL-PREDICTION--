@@ -1,6 +1,6 @@
-# What Is in Git vs What You Download Locally
+# What Is in Git vs What Stays Local
 
-**Policy:** Publish **code + verified results + reproduction instructions**. Keep **raw datasets** and **thesis report** local.
+**Policy:** Publish **code, verified results, raw datasets (Git LFS), and reproduction instructions**. Keep **thesis report** local only.
 
 ---
 
@@ -14,8 +14,9 @@
 | Documentation | `docs/`, `README.md` |
 | Verified metrics | `results/experiment_comparison_report.json`, `results/paper_experiment_report.json` |
 | Thesis figures | `results/figures/fig01`–`fig07` (PNG + PDF) |
+| **Raw datasets** | `data/NASA/`, `data/Oxford/`, `data/CALCE/` (**Git LFS**, ~437 MB) |
 | Unit tests | `tests/` |
-| Data download | `download_data.py` |
+| Data download (fallback) | `download_data.py` |
 | Setup check | `scripts/verify_setup.py` |
 
 ---
@@ -24,9 +25,6 @@
 
 | Item | Reason | Obtain |
 |:---|:---|:---|
-| NASA `.mat` (~56 MB) | Large binary | `python download_data.py --nasa` |
-| Oxford `.mat` (~266 MB) | Large binary | `python download_data.py --oxford` |
-| CALCE `.xlsx` (~50 MB) | Large binary | `python download_data.py --calce` |
 | Checkpoints | Regenerated on train | Run experiments |
 | MSc report `.docx` | Local thesis submission | Author machine only |
 | `validation_predictions.json` | Large intermediate | `generate_figures.py` |
@@ -35,12 +33,17 @@ Listed in `.gitignore`.
 
 ---
 
-## Reproduce verified results
+## Clone with datasets (Git LFS)
 
 ```powershell
-pip install -r requirements.txt
-python download_data.py --all
+git lfs install
+git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
+git lfs pull
 python scripts/verify_setup.py
+```
+
+If LFS files are missing after clone, run `git lfs pull`. Alternative: `python download_data.py --all`.
 
 # Phase 1 — Paper
 python run_paper_experiment.py --require-real --cpu

@@ -11,8 +11,10 @@
 Reproducible research artefact: **paper-exact battery SOH prediction** (Experiment A) followed by an **MSc extension** for joint SOH+RUL with physics-informed learning (Experiments B & C). Evaluated on real **NASA**, **Oxford**, and **CALCE** datasets.
 
 ```bash
+git lfs install
 git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
 cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
+git lfs pull
 ```
 
 ---
@@ -85,7 +87,7 @@ Figures: [`results/figures/`](results/figures/) · Regenerate: `python generate_
 
 ```powershell
 pip install -r requirements.txt
-python download_data.py --all
+git lfs pull
 python scripts/verify_setup.py
 
 # Phase 1 — Paper (5-fold CV, paper protocol)
@@ -205,15 +207,19 @@ scripts/sync_results_docs.py  # Refresh docs/RESULTS.md from JSON
 
 ## Data policy
 
-| In git | Not in git (download locally) |
+| In git | Not in git |
 |:---|:---|
-| Code, docs, tests | Raw `.mat` / `.xlsx` (~500 MB) |
-| `results/*.json` | `checkpoints/` (retrain) |
-| `results/figures/` | MSc report `.docx` (local only) |
+| Code, docs, tests, results JSON & figures | MSc report `.docx` (local only) |
+| **Raw datasets (~437 MB) via Git LFS** | `checkpoints/` (retrain locally) |
 
 ```powershell
-python download_data.py --all
+git lfs install
+git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
+git lfs pull
 ```
+
+Fallback if LFS unavailable: `python download_data.py --all`
 
 Details: [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md)
 
