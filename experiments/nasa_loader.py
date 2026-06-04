@@ -75,7 +75,7 @@ def iter_nasa_discharge_cycles_from_file(mat_path):
         if initial_capacity is None:
             initial_capacity = cap_scalar
 
-        soh = float(np.clip(cap_scalar / initial_capacity, 0.0, 1.2))
+        soh = float(np.clip(cap_scalar / initial_capacity, 0.0, 1.0))
         capacity_profile = _build_capacity_profile(data, voltage, current, cap_scalar)
 
         yield voltage, current, capacity_profile, soh

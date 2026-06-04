@@ -1,40 +1,25 @@
-# Data and Git
+# Data and Git LFS
 
-## Raw data in Git (LFS)
-
-After clone:
+## Clone
 
 ```powershell
 git lfs install
+git clone https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--
 git lfs pull
 ```
 
-Tracked via `.gitattributes`:
+## Datasets (~450 MB via LFS)
 
-- `data/**/*.mat`
-- `data/**/*.xlsx`, `data/**/*.xls`
-
-Approximate size: **~450 MB** (79 files).
-
-## If LFS is unavailable
-
-```powershell
-python download_data.py --all
-```
-
-## What not to commit
-
-| Path | Reason |
+| Dataset | Path |
 |:---|:---|
-| `local_archive/` | MSc extension (local dissertation only) |
-| `*.docx`, `MSc_Report*` | Final thesis report |
-| `checkpoints/` | Regenerated during training |
-| `results/*.log`, `validation_predictions.json` | Ephemeral |
+| NASA | `data/NASA/*.mat` |
+| Oxford | `data/Oxford/Oxford_Battery_Degradation_Dataset_1.mat` |
+| CALCE | `data/CALCE/**/*.xlsx` |
 
-## Paper-only entry
+If LFS is unavailable: `python download_data.py --all`
 
-| Step | Command |
-|:---|:---|
-| Verify | `python scripts/verify_setup.py` |
-| Train + evaluate | `python run_paper_experiment.py --require-real --cpu` |
-| Figures | `python generate_figures.py` |
+## Not committed
+
+- `local_archive/` — MSc extension (dissertation only)
+- `checkpoints/`, `*.docx`, thesis reports

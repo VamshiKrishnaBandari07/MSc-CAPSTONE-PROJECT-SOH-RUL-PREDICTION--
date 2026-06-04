@@ -20,6 +20,7 @@ checkpoints/
 
 # Ephemeral results
 results/validation_predictions.json
+**/validation_predictions.json
 results/*.log
 results/full_pipeline.log
 results/experiment_run.log

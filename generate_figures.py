@@ -52,7 +52,7 @@ def _save(fig, name):
 def _paper_results_list(report):
     if "results" in report:
         return report["results"]
-    return report.get("experiment_a_paper_reproduction", [])
+    return report.get("experiment_a_paper_reproduction", report.get("results", []))
 
 
 def plot_soh_trajectories(all_preds, datasets=None):
