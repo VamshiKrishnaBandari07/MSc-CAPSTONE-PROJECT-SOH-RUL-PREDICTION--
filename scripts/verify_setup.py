@@ -134,7 +134,7 @@ def main():
     print("  python generate_figures.py")
     print("  python scripts/sync_results_docs.py")
     print("  python -m pytest tests/ -v")
-    print("\nDocs: docs/PAPER_METHODOLOGY.md | docs/RESULTS.md | docs/AUDIT_REPORT.md")
+    print("\nDocs: docs/SUPERVISOR_GUIDE.md | docs/PAPER_METHODOLOGY.md | docs/RESULTS.md")
     print("=" * 60)
 
 

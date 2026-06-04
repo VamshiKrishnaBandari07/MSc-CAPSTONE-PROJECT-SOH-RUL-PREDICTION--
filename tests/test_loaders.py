@@ -3,24 +3,41 @@ import os
 import numpy as np
 import pytest
 
+MIN_MAT_BYTES = 100_000  # skip when Git LFS pointer stubs are present (CI without LFS)
+
 
 def _has_nasa():
     d = os.path.join(os.getcwd(), "data", "NASA")
-    return os.path.isdir(d) and any(f.endswith(".mat") for f in os.listdir(d))
+    if not os.path.isdir(d):
+        return False
+    for f in os.listdir(d):
+        if f.lower().endswith(".mat"):
+            path = os.path.join(d, f)
+            if os.path.getsize(path) >= MIN_MAT_BYTES:
+                return True
+    return False
 
 
 def _has_oxford():
     p = os.path.join(os.getcwd(), "data", "Oxford", "Oxford_Battery_Degradation_Dataset_1.mat")
-    return os.path.isfile(p) and os.path.getsize(p) > 1_000_000
+    return os.path.isfile(p) and os.path.getsize(p) > MIN_MAT_BYTES
 
 
 def _has_calce():
     from experiments.calce_loader import _list_cell_dirs
 
-    return len(_list_cell_dirs(os.path.join("data", "CALCE"))) > 0
+    calce = os.path.join("data", "CALCE")
+    if not os.path.isdir(calce):
+        return False
+    for cell_dir in _list_cell_dirs(calce):
+        for f in os.listdir(cell_dir):
+            if f.lower().endswith((".xls", ".xlsx")):
+                if os.path.getsize(os.path.join(cell_dir, f)) >= 10_000:
+                    return True
+    return False
 
 
-@pytest.mark.skipif(not _has_nasa(), reason="NASA .mat files not downloaded")
+@pytest.mark.skipif(not _has_nasa(), reason="NASA .mat files not present (run git lfs pull)")
 def test_nasa_loader_returns_valid_soh_range():
     from experiments.nasa_loader import iter_nasa_discharge_cycles
 
@@ -31,7 +48,7 @@ def test_nasa_loader_returns_valid_soh_range():
     assert max(soh) <= 1.05
 
 
-@pytest.mark.skipif(not _has_oxford(), reason="Oxford .mat not downloaded")
+@pytest.mark.skipif(not _has_oxford(), reason="Oxford .mat not present (run git lfs pull)")
 def test_oxford_loader_returns_valid_cycles():
     from experiments.oxford_loader import iter_oxford_characterisation_cycles
 
@@ -43,7 +60,7 @@ def test_oxford_loader_returns_valid_cycles():
     assert max(soh) <= 1.05
 
 
-@pytest.mark.skipif(not _has_calce(), reason="CALCE xlsx logs not downloaded")
+@pytest.mark.skipif(not _has_calce(), reason="CALCE xlsx not present (run git lfs pull)")
 def test_calce_loader_returns_valid_cycles():
     from experiments.calce_loader import iter_calce_all_cells
 

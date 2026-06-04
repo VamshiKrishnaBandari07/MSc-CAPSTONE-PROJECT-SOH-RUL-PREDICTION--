@@ -3,6 +3,7 @@
 [![Paper](https://img.shields.io/badge/Paper-Scientific%20Reports%202026-2ea44f)](https://doi.org/10.1038/s41598-026-39911-8)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776ab)](https://www.python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c)](https://pytorch.org)
+[![CI](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml/badge.svg)](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Reproduction of the hybrid deep learning model for lithium-ion **state-of-health (SOH)** estimation (Rahman et al., *Scientific Reports*, 2026).
@@ -20,11 +21,52 @@ Reproduction of the hybrid deep learning model for lithium-ion **state-of-health
 | Item | Status |
 |:---|:---|
 | Paper methodology (ICA/DV/DC, 300-pt grid, hybrid model, 5-fold CV) | Implemented |
+| **Three datasets** (NASA, Oxford, CALCE) | Full paper experiment in JSON |
 | Oxford SOH RMSE vs published **0.021** | **0.0215 ± 0.0050** (aligned) |
-| NASA SOH RMSE vs published **0.021** | **0.0385 ± 0.0048** (not matched; ~Transformer baseline) |
-| Figures & JSON in repo | `results/figures/fig01`–`fig04`, `paper_experiment_report.json` |
+| NASA SOH RMSE vs published **0.021** | **0.0385 ± 0.0048** (not matched; ~Transformer 0.038) |
+| Figures | `results/figures/fig01`–`fig04` |
 
-> **Methodology reproduced successfully; exact numerical replication on NASA was not fully achieved.** See [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md).
+> **Methodology reproduced successfully; exact NASA numerical match was not achieved.** See [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md).
+
+---
+
+## Experimental workflow
+
+```mermaid
+flowchart TB
+  subgraph data [Data]
+    NASA[NASA .mat]
+    OXF[Oxford .mat]
+    CAL[CALCE .xlsx]
+  end
+  subgraph prep [Preprocessing]
+    ICA[ICA dQ/dV]
+    DV[DV dV/dQ]
+    DC[DC dI/dV]
+    GRID[300-pt grid 2.5-4.2 V]
+  end
+  subgraph model [Hybrid model]
+    CNN[1D CNN]
+    TCN[TCN]
+    LSTM[LSTM]
+    ATT[Attention]
+    SOH[SOH head]
+  end
+  subgraph eval [Evaluation]
+    CV[Stratified 5-fold CV]
+    MET[RMSE / R²]
+  end
+  NASA --> ICA
+  OXF --> ICA
+  CAL --> ICA
+  ICA --> GRID
+  DV --> GRID
+  DC --> GRID
+  GRID --> CNN --> TCN --> LSTM --> ATT --> SOH
+  SOH --> CV --> MET
+  MET --> JSON[paper_experiment_report.json]
+  MET --> FIGS[fig01-fig04]
+```
 
 ---
 
@@ -44,7 +86,7 @@ pip install -r requirements.txt
 python scripts/verify_setup.py
 ```
 
-**Reproduce results (CPU, ~2–8 h all datasets):**
+## Paper experiment (all three datasets)
 
 ```powershell
 python run_paper_experiment.py --require-real --cpu
@@ -52,52 +94,45 @@ python scripts/sanitize_paper_report.py
 python generate_figures.py
 ```
 
-**NASA only (faster):** `python run_paper_experiment.py --require-real --cpu --dataset NASA`
+Runs **NASA → Oxford → CALCE** with stratified **5-fold CV** (~2–8 h on CPU). Re-running one dataset merges into the existing report (does not delete the others).
 
 ## Results (stratified 5-fold CV)
 
 | Dataset | SOH RMSE (mean ± std) | SOH R² |
 |:---|:---:|:---:|
-| Oxford | **0.0215 ± 0.0050** | 0.951 |
 | NASA | 0.0385 ± 0.0048 | 0.915 |
+| Oxford | **0.0215 ± 0.0050** | 0.951 |
 | CALCE | 0.0673 ± 0.0101 | 0.950 |
 
 Source: `results/paper_experiment_report.json` · Plots: `results/figures/`
 
 ## Methodology
 
-1. Datasets: NASA, Oxford, CALCE (real `.mat` / `.xlsx`, Git LFS)  
-2. Features: ICA (dQ/dV), DV (dV/dQ), DC (dI/dV) on 300-point grid (2.5–4.2 V)  
-3. Model: CNN → TCN → LSTM → attention (~0.39M parameters)  
-4. Training: MSE, Adam, augmentation, early stopping (see `experiments/paper_config.py`)  
-5. Evaluation: **stratified 5-fold CV** (default), seed **42**
+1. **NASA, Oxford, CALCE** — real data via Git LFS  
+2. **ICA / DV / DC** on 300-point voltage grid (2.5–4.2 V), Savitzky–Golay (15, 3)  
+3. **CNN → TCN → LSTM → attention** (~0.39M parameters), MSE loss  
+4. **Stratified 5-fold CV**, random seed **42**
 
 Details: [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md)
 
 ## Repository layout
 
 ```
-├── data/                      # NASA, Oxford, CALCE (LFS)
-├── experiments/               # loaders, CV, training, metrics
-├── model_paper.py             # hybrid architecture
-├── preprocess_paper.py        # feature pipeline
-├── run_paper_experiment.py    # main experiment
-├── generate_figures.py
-├── results/                   # JSON + fig01–fig04
+├── data/                   # NASA, Oxford, CALCE (LFS)
+├── experiments/            # loaders, CV, training
+├── run_paper_experiment.py # main entry (3 datasets)
+├── results/                # JSON + fig01–fig04
 ├── tests/
-├── scripts/
-└── docs/                      # methodology, results, supervisor guide
+└── docs/
 ```
 
 ## Documentation
 
 | Document | Purpose |
 |:---|:---|
-| [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md) | Examiner verification (start here) |
-| [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper ↔ code mapping |
+| [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md) | Examiner verification |
+| [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper ↔ code |
 | [`docs/RESULTS.md`](docs/RESULTS.md) | Results table |
-| [`docs/REPRODUCIBILITY_CHECKLIST.md`](docs/REPRODUCIBILITY_CHECKLIST.md) | Full checklist |
-| [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md) | Data & LFS |
 
 ## Citation
 
