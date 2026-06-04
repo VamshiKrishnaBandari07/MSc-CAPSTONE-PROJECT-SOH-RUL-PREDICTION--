@@ -19,7 +19,7 @@ The repository should be named:
 2. Set name to: `MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION`
 3. Click **Rename**
 
-GitHub redirects the old URL automatically.
+GitHub redirects the old URL automatically. Update the CI badge in `README.md` after rename if desired.
 
 ### Update local remote after rename
 

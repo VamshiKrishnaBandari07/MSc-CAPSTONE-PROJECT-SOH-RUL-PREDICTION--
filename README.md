@@ -7,7 +7,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c)](https://pytorch.org)
 [![Python](https://img.shields.io/badge/Python-3.9+-3776ab)](https://www.python.org)
 [![Tests](https://img.shields.io/badge/tests-pytest-blue)](tests/)
-[![CI](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION/actions/workflows/ci.yml/badge.svg)](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION/actions/workflows/ci.yml)
+[![CI](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-/actions/workflows/ci.yml/badge.svg)](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-/actions/workflows/ci.yml)
 
 Reproducible research artefact: **paper-exact battery SOH prediction** (Experiment A) followed by an **MSc extension** for joint SOH+RUL with physics-informed learning (Experiments B & C). Evaluated on real **NASA**, **Oxford**, and **CALCE** datasets.
 
