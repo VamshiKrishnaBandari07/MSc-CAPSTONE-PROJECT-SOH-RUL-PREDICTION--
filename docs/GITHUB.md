@@ -39,11 +39,44 @@ git remote -v
 
 ---
 
-## Contribution attribution
+## Contribution attribution (your GitHub ID only)
 
-All commits are authored by **Vamshi Krishna Bandari** (`107620506+VamshiKrishnaBandari07@users.noreply.github.com`) so they appear on your GitHub contribution graph.
+All commits on `main` are authored solely by **Vamshi Krishna Bandari**:
 
-Ensure GitHub **Settings → Emails** includes your `users.noreply.github.com` address (or the email used in commits).
+`107620506+VamshiKrishnaBandari07@users.noreply.github.com`
+
+There are **no** `Co-authored-by: Cursor` trailers on the `main` branch.
+
+### GitHub settings
+
+1. **Settings → Emails** — verify `107620506+VamshiKrishnaBandari07@users.noreply.github.com` (or your primary GitHub email).
+2. **Settings → Profile** — contributions count only for commits linked to that email.
+
+### Make new commits from your terminal (not Cursor AI)
+
+Cursor can add a co-author line if it runs `git commit` for you. For submission-related commits, use **PowerShell** or **Git Bash**:
+
+```powershell
+cd "c:\Users\VAMSHI KRISHNA\Downloads\battery  SOH predications"
+git add .
+git commit -m "Your message here"
+git push origin main
+```
+
+### Verify before push
+
+```powershell
+git log -1 --format="%an <%ae>%n%B"
+```
+
+You should see only your name and email, with **no** `Co-authored-by:` line.
+
+### Set git identity once (if needed)
+
+```powershell
+git config user.name "Vamshi Krishna Bandari"
+git config user.email "107620506+VamshiKrishnaBandari07@users.noreply.github.com"
+```
 
 ---
 
