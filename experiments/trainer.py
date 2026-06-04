@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import random
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -13,7 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from experiments.config import EARLY_STOPPING_PATIENCE, RANDOM_SEED, TRAIN_RATIO
 from experiments.cv import chronological_split, stratified_kfold_splits
-from experiments.io_utils import save_checkpoint
+from experiments.io_utils import load_checkpoint, save_checkpoint
 from experiments.metrics import monotonicity_violation_rate, regression_metrics
 from experiments.paper_preprocessing import sanitize_feature_tensor
 from experiments.runtime import get_device, paper_batch_size
@@ -110,6 +111,9 @@ def _train_paper_on_indices(
         PAPER_LR_SCHEDULER_FACTOR,
         PAPER_LR_SCHEDULER_PATIENCE,
         PAPER_MAX_EPOCHS,
+        PAPER_VOLTAGE_JITTER_V,
+        PAPER_VOLTAGE_MAX,
+        PAPER_VOLTAGE_MIN,
         PAPER_WEIGHT_DECAY,
     )
 
@@ -122,6 +126,8 @@ def _train_paper_on_indices(
     sched_factor = PAPER_LR_SCHEDULER_FACTOR
     sched_patience = PAPER_LR_SCHEDULER_PATIENCE
     feature_noise = PAPER_FEATURE_NOISE
+    # ±10 mV on 1.7 V grid ≈ relative scale on normalized feature channels (paper Section 3)
+    voltage_jitter_scale = PAPER_VOLTAGE_JITTER_V / max(PAPER_VOLTAGE_MAX - PAPER_VOLTAGE_MIN, 1e-6)
 
     train_features = np.array(
         [sanitize_feature_tensor(features[i]) for i in train_idx], dtype=np.float32
@@ -162,6 +168,8 @@ def _train_paper_on_indices(
         n_batches = 0
         for features_batch, targets in train_loader:
             features_batch, targets = features_batch.to(device), targets.to(device)
+            if voltage_jitter_scale > 0:
+                features_batch = features_batch + torch.randn_like(features_batch) * voltage_jitter_scale
             if feature_noise > 0:
                 features_batch = features_batch + torch.randn_like(features_batch) * feature_noise
             optimizer.zero_grad(set_to_none=True)
@@ -216,12 +224,20 @@ def _train_paper_on_indices(
             print(f"[Paper | {tag}] Early stopping at epoch {epoch}.")
             break
 
+    val_y_true = np.array([], dtype=np.float64)
+    val_y_pred = np.array([], dtype=np.float64)
+    if best_metrics and os.path.isfile(checkpoint_path):
+        load_checkpoint(model, checkpoint_path, device)
+        best_metrics, val_y_true, val_y_pred = _evaluate_paper_model(model, val_loader, device)
+
     return {
         "best_epoch": best_epoch,
         "metrics": best_metrics,
         "history": history,
         "train_cycles": int(len(train_idx)),
         "val_cycles": int(len(val_idx)),
+        "val_y_true": val_y_true,
+        "val_y_pred": val_y_pred,
     }
 
 
@@ -277,23 +293,46 @@ def train_paper_experiment(
             fold_histories.append({"fold": fold_i, **fold_result})
 
         if fold_metrics:
-            mean_rmse = float(np.mean(fold_metrics))
             std_rmse = float(np.std(fold_metrics))
             best_fold = int(np.argmin(fold_metrics)) + 1
             best_fold_result = fold_histories[best_fold - 1]
-            aggregated = {
-                "rmse": mean_rmse,
-                "rmse_std": std_rmse,
-                "rmse_folds": fold_metrics,
-                "mae": best_fold_result["metrics"]["mae"],
-                "r2": best_fold_result["metrics"]["r2"],
-                "mse": mean_rmse**2,
-                "mono_violation_rate": best_fold_result["metrics"]["mono_violation_rate"],
-            }
-            print(
-                f"[Paper | {dataset_name}] CV summary: SOH RMSE = {mean_rmse:.4f} ± {std_rmse:.4f} "
-                f"(folds: {[round(x, 4) for x in fold_metrics]})"
-            )
+
+            oof_true = [
+                fr["val_y_true"] for fr in fold_histories if len(fr.get("val_y_true", [])) > 0
+            ]
+            oof_pred = [
+                fr["val_y_pred"] for fr in fold_histories if len(fr.get("val_y_pred", [])) > 0
+            ]
+            if oof_true:
+                pooled = regression_metrics(np.concatenate(oof_true), np.concatenate(oof_pred))
+                mean_fold_rmse = float(np.mean(fold_metrics))
+                aggregated = {
+                    **pooled,
+                    "rmse_std": std_rmse,
+                    "rmse_folds": fold_metrics,
+                    "rmse_mean_folds": mean_fold_rmse,
+                    "mono_violation_rate": monotonicity_violation_rate(np.concatenate(oof_pred)),
+                }
+                print(
+                    f"[Paper | {dataset_name}] CV summary (pooled OOF): SOH RMSE = {pooled['rmse']:.4f} "
+                    f"| mean fold RMSE = {mean_fold_rmse:.4f} ± {std_rmse:.4f} "
+                    f"(folds: {[round(x, 4) for x in fold_metrics]})"
+                )
+            else:
+                mean_rmse = float(np.mean(fold_metrics))
+                aggregated = {
+                    "rmse": mean_rmse,
+                    "rmse_std": std_rmse,
+                    "rmse_folds": fold_metrics,
+                    "mae": best_fold_result["metrics"]["mae"],
+                    "r2": best_fold_result["metrics"]["r2"],
+                    "mse": mean_rmse**2,
+                    "mono_violation_rate": best_fold_result["metrics"]["mono_violation_rate"],
+                }
+                print(
+                    f"[Paper | {dataset_name}] CV summary: SOH RMSE = {mean_rmse:.4f} ± {std_rmse:.4f} "
+                    f"(folds: {[round(x, 4) for x in fold_metrics]})"
+                )
         else:
             aggregated = None
 

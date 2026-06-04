@@ -28,13 +28,14 @@ def main() -> None:
 
 ## SOH RMSE (stratified 5-fold CV)
 
-| Dataset | Our RMSE | Our R² | Paper hybrid | Transformer |
-|:---|:---:|:---:|:---:|:---:|
+| Dataset | Our RMSE (pooled OOF) | Our R² | Paper Table 4 (NASA only) |
+|:---|:---:|:---:|:---:|
 """
     for r in paper.get("results", []):
         m = r["metrics"]
         rmse = f"**{_fmt(m['rmse'])} ± {_fmt(m['rmse_std'])}**" if "rmse_std" in m else f"**{_fmt(m['rmse'])}**"
-        body += f"| {r['dataset']} | {rmse} | {_fmt(m.get('r2', 0))} | 0.021 | 0.038 |\n"
+        paper_ref = "0.021 (hybrid)" if r["dataset"] == "NASA" else "—"
+        body += f"| {r['dataset']} | {rmse} | {_fmt(m.get('r2', 0))} | {paper_ref} |\n"
 
     body += """
 ## Regenerate

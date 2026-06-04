@@ -24,7 +24,7 @@ This repository contains **only** the published **SOH** study (no MSc capstone R
 | 5 | **Denoising:** Savitzky–Golay window **15**, order **3** | `SG_WINDOW`, `SG_POLYORDER` in `paper_config.py` |
 | 6 | **Grid:** **300** points, **2.5–4.2 V** | `PAPER_SEQ_LEN`, voltage bounds |
 | 7 | **Scaling:** min–max on aligned signals | `extract_paper_cycle_tensor()` |
-| 8 | **Augmentation:** ±**10 mV** voltage jitter (train) | `PAPER_VOLTAGE_JITTER_V = 0.01` |
+| 8 | **Augmentation:** ±**10 mV** voltage jitter (train) | `PAPER_VOLTAGE_JITTER_V` in preprocessing + scaled noise in `trainer.py` |
 | 9 | **Architecture:** 1D-CNN → TCN → LSTM → **attention** | `model_paper.py` |
 | 10 | **Loss:** MSE | `experiments/trainer.py` |
 | 11 | **Training:** Adam 1e-3, grad clip **5**, early stop, LR ×**0.5** | `experiments/paper_config.py` |
@@ -36,13 +36,15 @@ This repository contains **only** the published **SOH** study (no MSc capstone R
 
 ## Reproduced results (5-fold CV, seed 42, real data)
 
-| Dataset | SOH RMSE (mean ± std) | SOH R² | Paper hybrid (Table 4) |
+| Dataset | SOH RMSE (pooled OOF ± fold std) | SOH R² | Paper Table 4 (NASA only) |
 |:---|:---:|:---:|:---:|
 | NASA PCoE | 0.0385 ± 0.0048 | 0.915 | RMSE **0.021**, R² **0.983** |
-| **Oxford** | **0.0215 ± 0.0050** | **0.951** | Same order as paper **0.021** |
-| CALCE | 0.0673 ± 0.0101 | 0.950 | Cross-chemistry benchmark |
+| **Oxford** | **0.0215 ± 0.0050** | **0.951** | — (cross-dataset benchmark) |
+| CALCE | 0.0673 ± 0.0101 | 0.950 | — |
 
-**Honest note:** Methodology matches the article; **Oxford** RMSE is at paper level; **NASA pooled CV** does not yet reach Table 4 **0.021** (close to paper Transformer **0.038**). Metrics are in `results/paper_experiment_report.json` — not edited to match the paper.
+**Metrics:** Primary **RMSE / R² / MAE** are **pooled out-of-fold** across folds; **±** is std of per-fold RMSE. Slim summary: `results/summary.json`. Full report: `results/paper_experiment_report.json`.
+
+**Honest note:** Methodology matches the article; **Oxford** RMSE is at paper level; **NASA** does not yet reach Table 4 **0.021** (close to published Transformer **0.038**). Re-run `run_paper_experiment.py` after code updates to refresh numbers with voltage-jitter training fix.
 
 ---
 

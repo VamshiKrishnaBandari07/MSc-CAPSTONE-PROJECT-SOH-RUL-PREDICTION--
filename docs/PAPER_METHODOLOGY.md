@@ -21,7 +21,7 @@ SOH(k) = Q_k / Q_BoL — beginning-of-life capacity per cell.
 2. Interpolate V, I, Q onto **300** points from **2.5 V** to **4.2 V**  
 3. Compute **ICA** (dQ/dV), **DV** (dV/dQ), **DC** (dI/dV)  
 4. Min–max scale channels (per cycle)  
-5. Training augmentation: **±10 mV** voltage jitter  
+5. Training augmentation: **±10 mV** voltage jitter (`preprocess_paper` / `paper_preprocessing`) plus scaled feature noise in `trainer.py`  
 
 Code: `experiments/paper_preprocessing.py`, `preprocess_paper.py`
 

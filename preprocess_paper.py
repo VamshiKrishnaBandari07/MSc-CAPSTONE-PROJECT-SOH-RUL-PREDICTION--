@@ -112,11 +112,11 @@ def generate_paper_synthetic_data(dataset_name="NASA", num_cycles=150, seq_len=P
 
     """Paper-aligned synthetic fallback when raw files are not downloaded."""
 
-    soh_array, _, _ = generate_shared_labels(dataset_name, num_cycles)
+    soh_array, _ = generate_shared_labels(dataset_name, num_cycles)
 
     rng = dataset_rng(dataset_name)
 
-    base_v = np.linspace(PAPER_VOLTAGE_MIN := 2.5, PAPER_VOLTAGE_MAX := 4.2, seq_len)
+    base_v = np.linspace(PAPER_VOLTAGE_MIN, PAPER_VOLTAGE_MAX, seq_len)
 
     data = []
 

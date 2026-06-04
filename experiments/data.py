@@ -31,5 +31,4 @@ def generate_shared_labels(dataset_name: str = "NASA", num_cycles: int = 150) ->
     soh = np.clip(1.0 - capacity_fade_rate * np.linspace(0, 1, num_cycles), eol_threshold, 1.0)
     soh += rng.normal(0, 0.01, size=num_cycles)
     soh = np.clip(soh, 0, 1)
-    rul = np.arange(num_cycles - 1, -1, -1, dtype=np.float32)
-    return soh.astype(np.float32), rul.astype(np.float32), eol_threshold
+    return soh.astype(np.float32), eol_threshold

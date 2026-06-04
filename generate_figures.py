@@ -71,7 +71,8 @@ def plot_soh_trajectories(all_preds, datasets=None):
         ax.grid(True, alpha=0.3)
     axes[0].set_ylabel("State of Health (SOH)")
     axes[-1].legend(loc="lower left")
-    fig.suptitle("Validation SOH Trajectories (Paper Reproduction)", fontsize=13, y=1.02)
+    note = all_preds[datasets[0]].get("eval_note", "cv5")
+    fig.suptitle(f"SOH Trajectories ({note})", fontsize=13, y=1.02)
     return _save(fig, "fig01_soh_trajectories")
 
 
@@ -94,7 +95,8 @@ def plot_soh_scatter(all_preds, datasets=None):
     axes[0].set_ylabel("Predicted SOH")
     for ax in axes:
         ax.set_xlabel("True SOH")
-    fig.suptitle("Predicted vs True SOH (Validation Set)", fontsize=13, y=1.02)
+    note = all_preds[datasets[0]].get("eval_note", "cv5")
+    fig.suptitle(f"Predicted vs True SOH ({note})", fontsize=13, y=1.02)
     return _save(fig, "fig02_soh_scatter")
 
 
@@ -102,18 +104,36 @@ def plot_rmse_comparison(report, datasets=None):
     paper_res = {r["dataset"]: r["metrics"]["rmse"] for r in _paper_results_list(report)}
     datasets = datasets or tuple(paper_res.keys())
     ref_t = PAPER_REFERENCE["transformer"]["soh_rmse"]
-    ref_p = PAPER_REFERENCE["paper_hybrid"]["soh_rmse"]
+    ref_p_nasa = PAPER_REFERENCE["paper_hybrid"]["soh_rmse"]
     x = np.arange(len(datasets))
-    width = 0.22
+    width = 0.5
     fig, ax = plt.subplots(figsize=(max(6, 2.5 * len(datasets)), 5))
-    ax.bar(x - width, [ref_t] * len(datasets), width, label="Transformer (published)", color=COLORS["ref_transformer"])
-    ax.bar(x, [ref_p] * len(datasets), width, label="Paper hybrid (published)", color=COLORS["ref_paper"])
-    ax.bar(x + width, [paper_res[d] for d in datasets], width, label="This reproduction", color=COLORS["ours"])
+    ax.bar(x, [paper_res[d] for d in datasets], width, label="This reproduction (5-fold CV, pooled OOF)", color=COLORS["ours"])
+    if "NASA" in datasets:
+        nasa_i = list(datasets).index("NASA")
+        ax.hlines(
+            ref_p_nasa,
+            nasa_i - 0.35,
+            nasa_i + 0.35,
+            colors=COLORS["ref_paper"],
+            linestyles="-",
+            linewidth=2,
+            label=f"Paper hybrid Table 4 ({ref_p_nasa})",
+        )
+        ax.hlines(
+            ref_t,
+            nasa_i - 0.35,
+            nasa_i + 0.35,
+            colors=COLORS["ref_transformer"],
+            linestyles="--",
+            linewidth=1.5,
+            label=f"Transformer published ({ref_t})",
+        )
     ax.set_xticks(x)
     ax.set_xticklabels(datasets)
     ax.set_ylabel("SOH RMSE (lower is better)")
-    ax.set_title("SOH RMSE vs Published Baselines")
-    ax.legend(loc="upper right")
+    ax.set_title("SOH RMSE — reproduction vs Table 4 (NASA PCoE only)")
+    ax.legend(loc="upper right", fontsize=8)
     ax.grid(True, axis="y", alpha=0.3)
     return _save(fig, "fig03_soh_rmse_comparison")
 
@@ -131,7 +151,14 @@ def plot_training_curves(report, datasets=None):
         epochs = [h["epoch"] for h in hist]
         rmse = [h.get("val_soh_rmse", h.get("val_rmse")) for h in hist]
         ax.plot(epochs, rmse, marker="o", color=COLORS["ours"], label="Validation RMSE")
-        ax.axhline(PAPER_REFERENCE["paper_hybrid"]["soh_rmse"], color=COLORS["ref_paper"], ls=":", lw=1.2, label="Paper target")
+        if dataset == "NASA":
+            ax.axhline(
+                PAPER_REFERENCE["paper_hybrid"]["soh_rmse"],
+                color=COLORS["ref_paper"],
+                ls=":",
+                lw=1.2,
+                label="Paper NASA target",
+            )
         ax.set_title(dataset)
         ax.set_xlabel("Epoch")
         ax.grid(True, alpha=0.3)
@@ -158,7 +185,7 @@ def generate_all_figures(report_path=None):
     has_ckpt = os.path.isdir(ckpt_dir) and any(f.endswith(".pt") for f in os.listdir(ckpt_dir))
     if has_ckpt:
         print("Collecting paper model predictions (requires checkpoints)...")
-        all_preds = collect_all_predictions()
+        all_preds = collect_all_predictions(report_path=report_path)
         save_json(all_preds, "validation_predictions.json")
         saved = [
             plot_soh_trajectories(all_preds),

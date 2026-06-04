@@ -1,0 +1,62 @@
+{
+  "experiment": "paper_reproduction",
+  "paper_doi": "10.1038/s41598-026-39911-8",
+  "eval_protocol": "cv5",
+  "paper_target_soh_rmse_nasa": 0.021,
+  "results": [
+    {
+      "dataset": "NASA",
+      "eval_protocol": "stratified_5fold_cv",
+      "rmse": 0.038480710061530456,
+      "rmse_std": 0.004841464311761887,
+      "rmse_folds": [
+        0.03380276622014429,
+        0.03695406047396972,
+        0.04691309798410178,
+        0.0342524617078005,
+        0.040481163921635976
+      ],
+      "mae": 0.02708433041205773,
+      "r2": 0.9152229232875426,
+      "mono_violation_rate": 0.37209302325581395
+    },
+    {
+      "dataset": "Oxford",
+      "eval_protocol": "stratified_5fold_cv",
+      "rmse": 0.021492368302982,
+      "rmse_std": 0.0049771462673543175,
+      "rmse_folds": [
+        0.021150843022299592,
+        0.030947125638700917,
+        0.019834120908151256,
+        0.016384175702345263,
+        0.019145576243412957
+      ],
+      "mae": 0.013398787723137783,
+      "r2": 0.9512265969127381,
+      "mono_violation_rate": 0.23300970873786409
+    },
+    {
+      "dataset": "CALCE",
+      "eval_protocol": "stratified_5fold_cv",
+      "rmse": 0.0672649638274994,
+      "rmse_std": 0.010065230344916068,
+      "rmse_folds": [
+        0.06415012374849399,
+        0.050461502126255615,
+        0.07085982682131702,
+        0.08127199710307609,
+        0.0695813693383543
+      ],
+      "mae": 0.03741228537543999,
+      "r2": 0.949734678736132,
+      "mono_violation_rate": 0.45251396648044695
+    }
+  ],
+  "data_sources": {
+    "NASA": "real_nasa_mat (636 discharge cycles)",
+    "Oxford": "real_oxford_mat (519 characterisation cycles)",
+    "CALCE": "real_calce_xlsx (2703 discharge cycles)"
+  },
+  "reproducibility_note": "Methodology reproduced per Rahman et al. (2026). Oxford SOH RMSE aligns with published hybrid target; NASA RMSE did not fully match paper Table 4 (0.021)."
+}

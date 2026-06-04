@@ -78,6 +78,15 @@ def main() -> int:
     else:
         check("report exists", False, report_path)
 
+    summary_path = "results/summary.json"
+    if os.path.isfile(summary_path):
+        with open(summary_path, encoding="utf-8") as f:
+            summary = json.load(f)
+        check("summary.experiment", summary.get("experiment") == "paper_reproduction")
+        check("summary.rows", len(summary.get("results", [])) >= 1)
+    else:
+        check("summary.json (optional)", True, "run scripts/export_summary.py")
+
     # 5. Figures (paper naming only)
     figs = [
         "fig01_soh_trajectories.pdf",

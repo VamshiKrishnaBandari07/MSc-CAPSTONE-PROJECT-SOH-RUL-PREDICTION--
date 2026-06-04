@@ -31,6 +31,10 @@ def main() -> None:
     sanitize(data)
     REPORT.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"Sanitized {REPORT}")
+    import subprocess
+    import sys
+
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "export_summary.py")], check=False)
 
 
 if __name__ == "__main__":
