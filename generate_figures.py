@@ -60,10 +60,11 @@ def plot_soh_trajectories(all_preds, datasets=None):
 
     for ax, dataset in zip(axes, datasets):
         data = all_preds[dataset]
-        cycles = data["paper"]["cycles"]
-        ax.plot(cycles, data["paper"]["soh_true"], color=COLORS["true"], lw=2, label="True SOH")
-        ax.plot(cycles, data["paper"]["soh_pred"], color=COLORS["paper"], ls="--", lw=1.8, label="Paper repro.")
-        ax.plot(cycles, data["msc"]["soh_pred"], color=COLORS["msc"], ls="-.", lw=1.8, label="MSc PI-MT")
+        paper_cycles = data["paper"]["cycles"]
+        msc_cycles = data["msc"]["cycles"]
+        ax.plot(paper_cycles, data["paper"]["soh_true"], color=COLORS["true"], lw=2, label="True SOH")
+        ax.plot(paper_cycles, data["paper"]["soh_pred"], color=COLORS["paper"], ls="--", lw=1.8, label="Paper repro.")
+        ax.plot(msc_cycles, data["msc"]["soh_pred"], color=COLORS["msc"], ls="-.", lw=1.8, label="MSc PI-MT")
         ax.set_title(f"{dataset} Dataset")
         ax.set_xlabel("Cycle index")
         ax.set_ylim(0.35, 1.02)

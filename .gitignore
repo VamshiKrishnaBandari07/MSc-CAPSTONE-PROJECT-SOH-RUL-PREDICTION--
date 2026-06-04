@@ -12,6 +12,10 @@ results/*
 !results/figures/
 !results/figures/**
 results/validation_predictions.json
+*.docx
+~$*.docx
+MSc_Report*
+docs/MSc_REPORT*
 data/**/*.mat
 data/**/*.xls
 data/**/*.xlsx

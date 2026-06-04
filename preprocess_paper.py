@@ -36,7 +36,7 @@ from experiments.oxford_loader import iter_oxford_characterisation_cycles
 
 from experiments.paper_config import PAPER_SEQ_LEN, PAPER_VOLTAGE_JITTER_V, PAPER_VOLTAGE_MAX, PAPER_VOLTAGE_MIN
 
-from experiments.paper_preprocessing import extract_paper_cycle_tensor
+from experiments.paper_preprocessing import extract_paper_cycle_tensor, sanitize_feature_tensor
 
 
 
@@ -62,7 +62,7 @@ def _cycles_to_tensors(cycle_iter, seq_len=PAPER_SEQ_LEN, rng=None, training_jit
 
             continue
 
-        features.append(tensor)
+        features.append(sanitize_feature_tensor(tensor))
 
         soh_values.append(soh)
 
@@ -156,56 +156,32 @@ class PaperDatasetLoader:
 
     @staticmethod
 
-    def load_dataset(dataset_name="NASA", raw_path=None, num_cycles=150, seq_len=PAPER_SEQ_LEN):
+    def load_dataset(dataset_name="NASA", raw_path=None, num_cycles=150, seq_len=PAPER_SEQ_LEN, require_real=False):
 
         if raw_path is None:
-
             raw_path = os.path.join(os.getcwd(), "data", dataset_name)
-
-
 
         print(f"[Paper | {dataset_name}] Loading from: {raw_path}")
 
-
-
+        loaded = None
         if dataset_name == "NASA" and os.path.isdir(raw_path):
+            loaded = _load_nasa_paper_features(raw_path, seq_len)
+        elif dataset_name == "Oxford" and os.path.isdir(raw_path):
+            loaded = _load_oxford_paper_features(raw_path, seq_len)
+        elif dataset_name == "CALCE" and os.path.isdir(raw_path):
+            loaded = _load_calce_paper_features(raw_path, seq_len)
 
-            nasa = _load_nasa_paper_features(raw_path, seq_len)
+        if loaded is not None:
+            print(f"[Paper | {dataset_name}] Loaded {len(loaded[0])} cycles (ICA+DV+DC, grid={seq_len}).")
+            return loaded
 
-            if nasa is not None:
+        if require_real:
+            raise FileNotFoundError(
+                f"[Paper | {dataset_name}] Real data required but not found under {raw_path}. "
+                "Run: python download_data.py --all"
+            )
 
-                print(f"[Paper | {dataset_name}] Loaded {len(nasa[0])} cycles (ICA+DV+DC, grid={seq_len}).")
-
-                return nasa
-
-
-
-        if dataset_name == "Oxford" and os.path.isdir(raw_path):
-
-            oxford = _load_oxford_paper_features(raw_path, seq_len)
-
-            if oxford is not None:
-
-                print(f"[Paper | {dataset_name}] Loaded {len(oxford[0])} cycles (ICA+DV+DC, grid={seq_len}).")
-
-                return oxford
-
-
-
-        if dataset_name == "CALCE" and os.path.isdir(raw_path):
-
-            calce = _load_calce_paper_features(raw_path, seq_len)
-
-            if calce is not None:
-
-                print(f"[Paper | {dataset_name}] Loaded {len(calce[0])} cycles (ICA+DV+DC, grid={seq_len}).")
-
-                return calce
-
-
-
-        print(f"[Paper | {dataset_name}] Using paper-aligned synthetic simulator.")
-
+        print(f"[Paper | {dataset_name}] WARNING: Using synthetic fallback (not comparable to paper 0.021).")
         return generate_paper_synthetic_data(dataset_name, num_cycles, seq_len)
 
 

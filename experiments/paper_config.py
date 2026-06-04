@@ -18,6 +18,11 @@ PAPER_LR_SCHEDULER_FACTOR = 0.5
 PAPER_LR_SCHEDULER_PATIENCE = 5
 PAPER_GRAD_CLIP_NORM = 5.0
 PAPER_VOLTAGE_JITTER_V = 0.01  # ±10 mV augmentation on raw voltage before features
+PAPER_FEATURE_NOISE = 0.005  # training-time noise on normalised ICA/DV/DC channels
+
+# Evaluation (paper: stratified 5-fold CV; chronological 80/20 is supplementary)
+PAPER_CV_FOLDS = 5
+PAPER_DEFAULT_EVAL = "cv5"  # "cv5" | "chronological"
 
 # Published targets (Table 4 — NASA PCoE pooled evaluation)
 PAPER_TARGET_SOH_RMSE = 0.021

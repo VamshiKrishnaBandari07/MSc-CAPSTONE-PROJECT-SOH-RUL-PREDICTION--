@@ -28,11 +28,14 @@ def print_comparison_report(paper_results, msc_results, benchmark_stats, ablatio
     for result in paper_results:
         ds = result["dataset"]
         rmse = result["metrics"]["rmse"]
-        mono = result["metrics"]["mono_violation_rate"]
+        mono = result["metrics"].get("mono_violation_rate", 0.0)
         delta = _pct_delta(rmse, paper_ref_rmse)
+        cv_std = result["metrics"].get("rmse_std")
+        rmse_disp = f"{rmse:.4f} ± {cv_std:.4f}" if cv_std is not None else f"{rmse:.4f}"
+        protocol = result.get("eval_protocol", "")
         print(
-            f"{ds:<10} | {rmse:<14.4f} | {paper_ref_rmse:<18.3f} | "
-            f"{transformer_rmse:<16.3f} | {delta:>+13.1f}% | {mono:<10.2%}"
+            f"{ds:<10} | {rmse_disp:<14} | {paper_ref_rmse:<18.3f} | "
+            f"{transformer_rmse:<16.3f} | {delta:>+13.1f}% | {mono:<10.2%}  [{protocol}]"
         )
 
     print("\n[Experiment B] MSc extension (joint SOH + RUL + physics-informed loss)")

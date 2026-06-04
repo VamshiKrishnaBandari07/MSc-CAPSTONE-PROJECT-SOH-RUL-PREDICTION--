@@ -102,4 +102,15 @@ def extract_paper_cycle_tensor(voltage, current, capacity, seq_len=PAPER_SEQ_LEN
     dv_a = np.interp(x_full, x_diff, _min_max_scale(dv_curve))
     dc_a = np.interp(x_full, x_diff, _min_max_scale(dc))
 
-    return np.stack([ica_a, dv_a, dc_a], axis=0).astype(np.float32)
+    tensor = np.stack([ica_a, dv_a, dc_a], axis=0).astype(np.float32)
+    if not np.all(np.isfinite(tensor)):
+        return None
+    return np.clip(tensor, -10.0, 10.0)
+
+
+def sanitize_feature_tensor(tensor):
+    """Replace non-finite values before training (stability on real CALCE/NASA logs)."""
+    arr = np.asarray(tensor, dtype=np.float32)
+    if not np.all(np.isfinite(arr)):
+        arr = np.nan_to_num(arr, nan=0.0, posinf=10.0, neginf=-10.0)
+    return np.clip(arr, -10.0, 10.0)

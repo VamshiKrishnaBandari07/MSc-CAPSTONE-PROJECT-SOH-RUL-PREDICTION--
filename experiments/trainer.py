@@ -19,6 +19,8 @@ from experiments.config import (
 from experiments.io_utils import save_checkpoint
 from experiments.runtime import get_device, msc_batch_size, paper_batch_size
 from experiments.metrics import monotonicity_violation_rate, regression_metrics
+from experiments.cv import chronological_split, stratified_kfold_splits
+from experiments.paper_preprocessing import sanitize_feature_tensor
 
 
 def set_seed(seed=RANDOM_SEED):
@@ -158,21 +160,24 @@ def _evaluate_msc_model(model, loader, device, max_rul):
     }
 
 
-def train_paper_experiment(
+def _train_paper_on_indices(
     model,
     features,
     soh,
+    train_idx,
+    val_idx,
     dataset_name,
     checkpoint_path,
-    epochs=None,
-    batch_size=None,
+    epochs,
+    batch_size,
     use_paper_protocol=True,
+    fold_label=None,
 ):
-    """Train Experiment A — paper reproduction (MSE, SOH-only)."""
+    """Single train/val split for paper experiment (one fold or chronological)."""
     if use_paper_protocol:
         from experiments.paper_config import (
-            PAPER_BATCH_SIZE,
             PAPER_EARLY_STOPPING_PATIENCE,
+            PAPER_FEATURE_NOISE,
             PAPER_GRAD_CLIP_NORM,
             PAPER_LEARNING_RATE,
             PAPER_LR_SCHEDULER_FACTOR,
@@ -189,7 +194,7 @@ def train_paper_experiment(
         early_stop = EarlyStopping(patience=PAPER_EARLY_STOPPING_PATIENCE)
         sched_factor = PAPER_LR_SCHEDULER_FACTOR
         sched_patience = PAPER_LR_SCHEDULER_PATIENCE
-        feature_noise = 0.005  # training-time jitter on normalized ICA/DV/DC channels
+        feature_noise = PAPER_FEATURE_NOISE
     else:
         epochs = epochs or MAX_EPOCHS
         batch_size = batch_size or msc_batch_size()
@@ -201,17 +206,23 @@ def train_paper_experiment(
         sched_patience = 2
         feature_noise = 0.0
 
-    split_idx = split_indices(len(features))
-    train_ds = PaperDataset(features[:split_idx], soh[:split_idx])
-    val_ds = PaperDataset(features[split_idx:], soh[split_idx:])
+    train_features = np.array([sanitize_feature_tensor(features[i]) for i in train_idx], dtype=np.float32)
+    train_soh = soh[train_idx]
+    val_features = np.array([sanitize_feature_tensor(features[i]) for i in val_idx], dtype=np.float32)
+    val_soh = soh[val_idx]
+
+    train_ds = PaperDataset(train_features, train_soh)
+    val_ds = PaperDataset(val_features, val_soh)
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0)
 
     device = get_device()
     model = model.to(device)
+    tag = f"{dataset_name}" + (f" fold {fold_label}" if fold_label is not None else "")
     if device.type == "cpu":
-        print(f"[Paper | {dataset_name}] Training on CPU (batch_size={batch_size})")
+        print(f"[Paper | {tag}] Training on CPU (batch_size={batch_size}, train={len(train_idx)}, val={len(val_idx)})")
+
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -225,20 +236,37 @@ def train_paper_experiment(
     for epoch in range(1, epochs + 1):
         model.train()
         train_loss = 0.0
+        n_batches = 0
         for features_batch, targets in train_loader:
             features_batch, targets = features_batch.to(device), targets.to(device)
             if feature_noise > 0:
                 features_batch = features_batch + torch.randn_like(features_batch) * feature_noise
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             pred, _ = model(features_batch)
             loss = criterion(pred, targets)
+            if not torch.isfinite(loss):
+                continue
             loss.backward()
             if grad_clip is not None:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             optimizer.step()
             train_loss += loss.item() * features_batch.size(0)
+            n_batches += 1
+
+        if n_batches == 0:
+            print(f"[Paper | {tag}] All batches non-finite at epoch {epoch}. Stopping.")
+            break
 
         val_metrics, _, _ = _evaluate_paper_model(model, val_loader, device)
+        if not np.isfinite(val_metrics["rmse"]):
+            print(
+                f"[Paper | {tag}] Non-finite validation at epoch {epoch} "
+                f"(best epoch {best_epoch}, RMSE {best_metrics['rmse']:.4f}). Stopping."
+                if best_metrics
+                else f"[Paper | {tag}] Non-finite validation at epoch {epoch}. Stopping."
+            )
+            break
+
         avg_train_loss = train_loss / len(train_ds)
         scheduler.step(val_metrics["rmse"])
         history.append(
@@ -259,29 +287,143 @@ def train_paper_experiment(
             save_checkpoint(
                 model,
                 checkpoint_path,
-                metadata={"dataset": dataset_name, "epoch": epoch, "metrics": val_metrics},
+                metadata={"dataset": dataset_name, "epoch": epoch, "metrics": val_metrics, "fold": fold_label},
             )
 
         print(
-            f"[Paper | {dataset_name}] Epoch {epoch:02d}/{epochs:02d} | "
+            f"[Paper | {tag}] Epoch {epoch:02d}/{epochs:02d} | "
             f"Train MSE: {avg_train_loss:.5f} | Val SOH RMSE: {val_metrics['rmse']:.4f} | "
             f"MAE: {val_metrics['mae']:.4f} | R2: {val_metrics['r2']:.4f}"
         )
 
         if early_stop.should_stop:
-            print(f"[Paper | {dataset_name}] Early stopping at epoch {epoch}.")
+            print(f"[Paper | {tag}] Early stopping at epoch {epoch}.")
             break
 
+    return {
+        "best_epoch": best_epoch,
+        "metrics": best_metrics,
+        "history": history,
+        "train_cycles": int(len(train_idx)),
+        "val_cycles": int(len(val_idx)),
+    }
+
+
+def train_paper_experiment(
+    model,
+    features,
+    soh,
+    dataset_name,
+    checkpoint_path,
+    epochs=None,
+    batch_size=None,
+    use_paper_protocol=True,
+    eval_protocol="cv5",
+):
+    """
+    Train Experiment A — paper reproduction (MSE, SOH-only).
+
+    eval_protocol:
+      - "cv5": stratified 5-fold CV (Rahman et al. 2026) — primary paper metric
+      - "chronological": 80/20 chronological split — fast supplementary run
+    """
+    from experiments.paper_config import PAPER_DEFAULT_EVAL
+
+    eval_protocol = eval_protocol or PAPER_DEFAULT_EVAL
+    features = np.asarray(features, dtype=np.float32)
+    soh = np.asarray(soh, dtype=np.float32)
+
+    if eval_protocol == "cv5":
+        from model_paper import build_paper_model
+
+        seq_len = features.shape[2]
+        fold_metrics = []
+        fold_histories = []
+        best_fold = 1
+        best_fold_result = None
+        for fold_i, (train_idx, val_idx) in enumerate(stratified_kfold_splits(soh), start=1):
+            print(f"\n[Paper | {dataset_name}] === Stratified CV fold {fold_i}/5 ===")
+            fold_model = build_paper_model(seq_len=seq_len)
+            fold_ckpt = checkpoint_path.replace(".pt", f"_fold{fold_i}.pt")
+            fold_result = _train_paper_on_indices(
+                fold_model,
+                features,
+                soh,
+                train_idx,
+                val_idx,
+                dataset_name,
+                fold_ckpt,
+                epochs=epochs,
+                batch_size=batch_size,
+                use_paper_protocol=use_paper_protocol,
+                fold_label=fold_i,
+            )
+            if fold_result["metrics"]:
+                fold_metrics.append(fold_result["metrics"]["rmse"])
+            fold_histories.append({"fold": fold_i, **fold_result})
+
+        if fold_metrics:
+            mean_rmse = float(np.mean(fold_metrics))
+            std_rmse = float(np.std(fold_metrics))
+            best_fold = int(np.argmin(fold_metrics)) + 1
+            best_fold_result = fold_histories[best_fold - 1]
+            aggregated = {
+                "rmse": mean_rmse,
+                "rmse_std": std_rmse,
+                "rmse_folds": fold_metrics,
+                "mae": best_fold_result["metrics"]["mae"] if best_fold_result["metrics"] else None,
+                "r2": best_fold_result["metrics"]["r2"] if best_fold_result["metrics"] else None,
+                "mse": mean_rmse ** 2,
+                "mono_violation_rate": best_fold_result["metrics"]["mono_violation_rate"]
+                if best_fold_result["metrics"]
+                else None,
+            }
+            print(
+                f"[Paper | {dataset_name}] CV summary: SOH RMSE = {mean_rmse:.4f} ± {std_rmse:.4f} "
+                f"(folds: {[round(x, 4) for x in fold_metrics]})"
+            )
+        else:
+            aggregated = None
+            mean_rmse = std_rmse = None
+
+        return {
+            "dataset": dataset_name,
+            "experiment": "paper_reproduction",
+            "methodology": "scientific_reports_2026",
+            "eval_protocol": "stratified_5fold_cv",
+            "best_epoch": best_fold_result["best_epoch"] if fold_metrics else 0,
+            "metrics": aggregated,
+            "fold_results": fold_histories,
+            "history": best_fold_result["history"] if fold_metrics else [],
+            "checkpoint": checkpoint_path.replace(".pt", f"_fold{best_fold}.pt") if fold_metrics else checkpoint_path,
+            "train_cycles": None,
+            "val_cycles": None,
+        }
+
+    train_idx, val_idx = chronological_split(len(features))
+    split_result = _train_paper_on_indices(
+        model,
+        features,
+        soh,
+        train_idx,
+        val_idx,
+        dataset_name,
+        checkpoint_path,
+        epochs=epochs,
+        batch_size=batch_size,
+        use_paper_protocol=use_paper_protocol,
+    )
     return {
         "dataset": dataset_name,
         "experiment": "paper_reproduction",
         "methodology": "scientific_reports_2026" if use_paper_protocol else "lite",
-        "best_epoch": best_epoch,
-        "metrics": best_metrics,
-        "history": history,
+        "eval_protocol": "chronological_80_20",
+        "best_epoch": split_result["best_epoch"],
+        "metrics": split_result["metrics"],
+        "history": split_result["history"],
         "checkpoint": checkpoint_path,
-        "train_cycles": split_idx,
-        "val_cycles": len(features) - split_idx,
+        "train_cycles": split_result["train_cycles"],
+        "val_cycles": split_result["val_cycles"],
     }
 
 

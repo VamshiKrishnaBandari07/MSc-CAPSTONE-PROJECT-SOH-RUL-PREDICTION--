@@ -70,6 +70,8 @@ def experiment_config_snapshot():
 
     from experiments.paper_config import (
         PAPER_BATCH_SIZE,
+        PAPER_CV_FOLDS,
+        PAPER_DEFAULT_EVAL,
         PAPER_MAX_EPOCHS,
         PAPER_SEQ_LEN,
         PAPER_TARGET_SOH_RMSE,
@@ -86,6 +88,8 @@ def experiment_config_snapshot():
             "batch_size": PAPER_BATCH_SIZE,
             "loss": "MSE",
             "target_soh_rmse": PAPER_TARGET_SOH_RMSE,
+            "eval_protocol_default": PAPER_DEFAULT_EVAL,
+            "cv_folds": PAPER_CV_FOLDS,
             "reference_doi": "10.1038/s41598-026-39911-8",
         },
         "experiment_b_msc": {

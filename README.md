@@ -1,232 +1,277 @@
-# MSc Capstone: Hybrid Deep Learning for Joint Battery SOH & RUL Prediction
+# Hybrid Deep Learning for Joint Battery SOH & RUL Prediction
 
-[![Nature Scientific Reports](https://img.shields.io/badge/Nature-Scientific%20Reports-green.svg)](https://www.nature.com/articles/s41598-026-39911-8)
-[![Degree](https://img.shields.io/badge/Degree-MSc%20Capstone-blue.svg)]()
-[![Framework](https://img.shields.io/badge/Deep%20Learning-PyTorch%20%2F%20SciPy-orange.svg)]()
+**MSc Capstone — University of Roehampton (UK)**  
+**Author:** [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07)
 
-**Author:** [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07)  
-**GitHub:** [MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-)
+[![Paper](https://img.shields.io/badge/Paper-Scientific%20Reports%202026-green)](https://doi.org/10.1038/s41598-026-39911-8)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c)](https://pytorch.org)
+[![Python](https://img.shields.io/badge/Python-3.9+-3776ab)](https://www.python.org)
+[![Tests](https://img.shields.io/badge/tests-pytest-blue)](tests/)
+
+Reproducible research artefact: **paper-exact battery SOH prediction** (Experiment A) followed by an **MSc extension** for joint SOH+RUL with physics-informed learning (Experiments B & C). Evaluated on real **NASA**, **Oxford**, and **CALCE** datasets.
 
 ```bash
 git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
 ```
 
-> **Data policy:** Raw datasets (~500 MB) are **not in git** — download with [`download_data.py`](download_data.py).  
-> See [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md). Verified metrics and figures live in [`results/`](results/).
+---
+
+## Executive summary
+
+| | Detail |
+|:---|:---|
+| **Reference paper** | Rahman et al., *Sci. Rep.* 2026 — [DOI 10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8) |
+| **Phase 1** | Reproduce hybrid CNN–TCN–LSTM–Attention (ICA+DV+DC, 300-pt grid, MSE) |
+| **Phase 2** | Joint SOH+RUL + monotonicity loss (original contribution) |
+| **Best SOH RMSE (Exp A, Oxford, 5-fold CV)** | **0.0215 ± 0.0050** (paper target: 0.021) |
+| **MSc model size** | **0.067 M params**, 2.8 ms inference — embedded-BMS feasible |
+| **Reproducibility** | Fixed seed 42, JSON reports, unit tests, `verify_setup.py` |
+
+Full results: [`docs/RESULTS.md`](docs/RESULTS.md) · Overview: [`docs/CAPSTONE_OVERVIEW.md`](docs/CAPSTONE_OVERVIEW.md)
 
 ---
 
-## Capstone structure (professor requirement)
+## Capstone structure (run in this order)
 
-This project follows a **two-phase** design:
+```
+Phase 1 ──► run_paper_experiment.py     Experiment A (paper SOH)
+                │
+                ▼
+Phase 2 ──► run_experiments.py --msc-only   Experiment B (joint) + C (ablation)
+```
 
-| Phase | Experiment | Goal |
-|:---:|:---|:---|
-| **1** | **Experiment A** | Implement and validate the [Scientific Reports (2026)](https://doi.org/10.1038/s41598-026-39911-8) paper methodology on **real NASA, Oxford, and CALCE** data |
-| **2** | **Experiment B** | **MSc extension** — joint SOH + RUL prediction with physics-informed monotonicity loss (built **after** paper reproduction) |
-| — | **Experiment C** | Ablation — Experiment B without physics penalty |
+| Phase | ID | Script | Output |
+|:---:|:---|:---|:---|
+| **1** | **A** | `python run_paper_experiment.py --require-real --cpu` | `results/paper_experiment_report.json` |
+| **2** | **B** | `python run_experiments.py --msc-only --require-real --cpu` | `results/experiment_comparison_report.json` |
+| **2** | **C** | (included in `--msc-only`) | Ablation metrics in same JSON |
 
-**Paper reference:** Rahman et al., *Deep learning-based battery health prediction for enhancing electric vehicle performance*, [DOI 10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
+> Run **Experiment A before B**. The MSc extension is built on validated paper methodology, not in parallel.
 
 ---
 
-## Experiment A — Paper reproduction (implement first)
+## Verified results (real data, committed)
 
-Replicates the published hybrid **CNN–TCN–LSTM–Attention** model for **SOH-only** prediction.
+### Experiment A — Paper reproduction (5-fold stratified CV)
 
-| Item | Paper / this repo |
+| Dataset | SOH RMSE (mean ± std) | SOH R² | Paper target | Transformer |
+|:---|:---:|:---:|:---:|:---:|
+| NASA | **0.0385 ± 0.0048** | 0.915 | 0.021 | 0.038 |
+| Oxford | **0.0215 ± 0.0050** | 0.951 | 0.021 | 0.038 |
+| CALCE | **0.0673 ± 0.0101** | 0.950 | 0.021 | 0.038 |
+
+### Experiment B — MSc extension (chronological 80/20)
+
+| Dataset | SOH RMSE | RUL RMSE (cycles) |
+|:---|:---:|:---:|
+| NASA | 0.112 | 44.3 |
+| Oxford | 0.041 | 14.2 |
+| CALCE | 0.230 | 1.5 |
+
+### Experiment C — Ablation (monotonicity loss)
+
+| Dataset | SOH RMSE (no physics) | SOH RMSE (with physics) |
+|:---|:---:|:---:|
+| NASA | 0.078 | 0.112 |
+| Oxford | **0.034** | 0.041 |
+| CALCE | 0.355 | **0.230** |
+
+Figures: [`results/figures/`](results/figures/) · Regenerate: `python generate_figures.py`
+
+---
+
+## Quick start
+
+```powershell
+pip install -r requirements.txt
+python download_data.py --all
+python scripts/verify_setup.py
+
+# Phase 1 — Paper (5-fold CV, paper protocol)
+python run_paper_experiment.py --require-real --cpu
+
+# Phase 2 — MSc extension
+python run_experiments.py --msc-only --require-real --cpu
+
+python generate_figures.py
+python scripts/sync_results_docs.py
+python -m pytest tests/ -v
+```
+
+Or run the full pipeline:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_full_pipeline.ps1
+```
+
+| Flag | Purpose |
+|:---|:---|
+| `--require-real` | Fail if datasets missing (no synthetic demo) |
+| `--cpu` | Force CPU (auto-detected if no GPU) |
+| `--dataset NASA` | Single dataset |
+| `--chrono` | Fast 80/20 split (debug only, not paper protocol) |
+| `--msc-only` | Skip Phase 1; run B+C only |
+| `--paper-only` | Phase 1 only |
+
+**CPU time:** Phase 1 with 5-fold CV ~2–8 h (all datasets); chronological debug ~30–90 min/dataset.
+
+---
+
+## Experiment A — Paper methodology
+
+Aligned with Rahman et al. (2026) Section 3 and Table 2:
+
+| Component | Specification |
 |:---|:---|
 | **Features** | ICA (`dQ/dV`), DV (`dV/dQ`), DC (`dI/dV`) |
 | **Voltage grid** | 300 points, 2.5 V – 4.2 V |
-| **Denoising** | Savitzky–Golay (window = 15, order = 3) |
-| **Model** | 1D-CNN (k=5) + BatchNorm + TCN + LSTM + Attention |
-| **Loss** | MSE, SOH output ∈ [0, 1] |
-| **Training** | Up to 200 epochs, early stopping, grad clip 5, LR schedule, ±10 mV augmentation |
+| **Smoothing** | Savitzky–Golay, window=15, order=3 |
+| **Architecture** | 1D-CNN (k=5) → BatchNorm → TCN → LSTM → Attention |
+| **Loss** | MSE, SOH ∈ [0, 1] (sigmoid head) |
+| **Training** | Adam 1e-3, up to 200 epochs, early stop 20, grad clip 5 |
+| **Augmentation** | ±10 mV voltage jitter + feature noise (train only) |
+| **Evaluation** | **Stratified 5-fold CV** (default) |
 | **Parameters** | ~0.39 M (paper reports ~0.35 M) |
-| **Target metrics** | SOH RMSE ≈ **0.021**, R² ≈ **0.983** |
-| **Datasets** | NASA PCoE, Oxford, CALCE (real data via download) |
 
-| File | Role |
+| Module | Role |
 |:---|:---|
-| [`run_paper_experiment.py`](run_paper_experiment.py) | **Main entry** — Experiment A on all datasets |
+| [`run_paper_experiment.py`](run_paper_experiment.py) | Phase 1 entry |
 | [`model_paper.py`](model_paper.py) | Paper architecture |
-| [`preprocess_paper.py`](preprocess_paper.py) | ICA + DV + DC feature pipeline |
-| [`experiments/paper_config.py`](experiments/paper_config.py) | Paper hyperparameters |
-| [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper-to-code mapping |
-
-```powershell
-python download_data.py --all
-python run_paper_experiment.py
-```
-
-Output: [`results/paper_experiment_report.json`](results/paper_experiment_report.json)
+| [`preprocess_paper.py`](preprocess_paper.py) | Feature pipeline |
+| [`experiments/paper_preprocessing.py`](experiments/paper_preprocessing.py) | ICA/DV/DC extraction |
+| [`experiments/cv.py`](experiments/cv.py) | 5-fold CV splits |
+| [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper-to-code map |
 
 ---
 
-## Experiment B — MSc extension (after paper implementation)
+## Experiment B — MSc extension (original work)
 
-Extends Experiment A with a **joint prediction head** and **physics-informed regularisation**. This is the **original MSc contribution**, not part of the published paper.
-
-| Item | Experiment A (paper) | Experiment B (MSc) |
+| | Paper (A) | MSc (B) |
 |:---|:---|:---|
-| **Prediction** | SOH only | **Joint SOH + RUL** |
+| **Outputs** | SOH only | **Joint SOH + RUL** |
 | **Loss** | MSE | MSE + RUL + **monotonicity penalty** |
-| **Features** | ICA, DV, DC (300-pt grid) | ICA, DVA, DCA (100-pt grid) |
+| **Features** | 300-pt voltage grid | 100-pt grid (ICA, DVA, DCA) |
 | **Model** | `model_paper.py` | [`model.py`](model.py) |
-| **Preprocessing** | `preprocess_paper.py` | [`preprocess.py`](preprocess.py) |
+| **Params** | 0.39 M | **0.067 M** |
 
-| File | Role |
-|:---|:---|
-| [`train.py`](train.py) | Experiment B only |
-| [`run_experiments.py`](run_experiments.py) | Full suite: A + B + C + benchmark |
+Physics-informed loss (Experiment B):
 
-```powershell
-python run_experiments.py
-```
-
-Output: [`results/experiment_comparison_report.json`](results/experiment_comparison_report.json)
+$$\mathcal{L} = \mathcal{L}_{SOH} + \alpha \mathcal{L}_{RUL} + \gamma \mathcal{L}_{mono}$$
 
 ---
 
-## Quick start (recommended order)
-
-| Step | Command | Purpose |
-|:---:|:---|:---|
-| 1 | `pip install -r requirements.txt` | Install dependencies |
-| 2 | `python scripts/verify_setup.py` | Check Python, packages, data |
-| 3 | `python download_data.py --all` | Download real NASA, Oxford, CALCE |
-| 4 | **`python run_paper_experiment.py --cpu`** | **Experiment A on CPU** (auto if no GPU) |
-| 5 | `python run_experiments.py` | **Experiments A + B + C** (full capstone) |
-| 6 | `python generate_figures.py` | Thesis figures (PNG + PDF) |
-| 7 | `pytest tests/ -v` | Run unit tests |
-
-NASA-only paper run: `python run_nasa_real.py`
-
----
-
-## Running on CPU (no GPU required)
-
-All experiments **run on CPU automatically** when CUDA is not available. No GPU is required.
-
-| Command | Purpose |
-|:---|:---|
-| `python run_paper_experiment.py --cpu` | Experiment A on CPU |
-| `python run_paper_experiment.py --cpu --dataset NASA` | NASA only (~30–60 min) |
-| `python run_experiments.py --cpu --dataset NASA` | Full A+B+C on NASA only |
-| `set FORCE_CPU=1` (Windows) | Force CPU even if GPU exists |
-
-**CPU settings:** batch size 4 (paper) / 4 (MSc), PyTorch uses up to 8 threads.  
-**Expected time:** ~30–90 min per dataset (Experiment A); full suite ~3–6 hours on CPU.
-
----
-
-| | Paper (Table 4) | Experiment A (re-run after clone) |
-|:---|:---:|:---:|
-| SOH RMSE | **0.021** | Run `run_paper_experiment.py` |
-| SOH R² | **0.983** | Reported in JSON output |
-| Parameters | 0.35 M | ~0.39 M |
-
-> Previous results in `results/` may pre-date the paper-aligned ICA+DV+DC pipeline. **Re-run Experiment A** after clone for thesis tables.
-
----
-
-## Architecture overview
+## Architecture
 
 ```mermaid
-graph TD
-    Raw[Raw V, I, Q from cycling data] --> Pre[Savitzky-Golay + voltage grid]
-    Pre --> A_Feat[Exp A: ICA + DV + DC]
-    Pre --> B_Feat[Exp B: ICA + DVA + DCA]
-    A_Feat --> PaperModel[CNN-TCN-LSTM-Attn paper]
-    B_Feat --> MscModel[CNN-TCN-LSTM-Attn joint]
-    PaperModel --> SOH_A[SOH only]
-    MscModel --> SOH_B[SOH]
-    MscModel --> RUL[RUL]
+flowchart LR
+    subgraph Phase1["Phase 1 — Paper"]
+        RAW1[Raw V,I,Q] --> SG1[SG filter + 300pt grid]
+        SG1 --> F1[ICA + DV + DC]
+        F1 --> M1[CNN-TCN-LSTM-Attn]
+        M1 --> SOH1[SOH]
+    end
+    subgraph Phase2["Phase 2 — MSc"]
+        RAW2[Raw V,I,Q] --> SG2[SG filter + 100pt grid]
+        SG2 --> F2[ICA + DVA + DCA]
+        F2 --> M2[Joint head model]
+        M2 --> SOH2[SOH]
+        M2 --> RUL[RUL]
+    end
 ```
-
-### Physics-informed loss (Experiment B only)
-
-$$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{SOH}} + \alpha \mathcal{L}_{\text{RUL}} + \gamma \mathcal{L}_{\text{monotonicity}}$$
 
 ---
 
 ## Repository layout
 
 ```text
-run_paper_experiment.py   # Experiment A — paper reproduction (START HERE)
-run_experiments.py        # Experiments A + B + C + comparison report
-run_nasa_real.py          # Experiment A on NASA real data only
-train_paper.py            # Alias → run_paper_experiment.py
-train.py                  # Experiment B — MSc extension only
-model_paper.py            # Paper model (SOH head)
-model.py                  # MSc model (joint SOH + RUL head)
-preprocess_paper.py       # Paper features: ICA, DV, DC
-preprocess.py             # MSc features: ICA, DVA, DCA + RUL labels
-download_data.py          # Download NASA, Oxford, CALCE
-experiments/              # Config, trainer, metrics, loaders
-docs/                     # Methodology, thesis results, data policy
-results/                  # JSON reports + thesis figures (committed)
-tests/                    # Unit tests
-scripts/verify_setup.py   # Environment check
+run_paper_experiment.py      # Phase 1 — START HERE
+run_experiments.py           # Phase 2 or full suite
+model_paper.py / model.py    # Experiment A / B architectures
+preprocess_paper.py          # Paper features (ICA,DV,DC)
+preprocess.py                # MSc features + RUL labels
+download_data.py             # NASA, Oxford, CALCE fetch
+generate_figures.py          # Thesis figures (7 plots)
+experiments/                 # Config, trainer, CV, loaders, metrics
+results/                     # JSON reports + figures (in git)
+docs/                        # Methodology, results, capstone overview
+tests/                       # Unit tests (metrics, preprocessing, loaders)
+scripts/verify_setup.py      # Environment + data verification
+scripts/run_full_pipeline.ps1 # One-command Phase 1 → 2 → figures
+scripts/sync_results_docs.py  # Refresh docs/RESULTS.md from JSON
 ```
 
 ---
 
-## Setup
+## Data policy
 
-**Requirements:** Python 3.9+, PyTorch 2.0+, see [`requirements.txt`](requirements.txt)
-
-<details>
-<summary>Detailed setup (venv, clone, GPU)</summary>
+| In git | Not in git (download locally) |
+|:---|:---|
+| Code, docs, tests | Raw `.mat` / `.xlsx` (~500 MB) |
+| `results/*.json` | `checkpoints/` (retrain) |
+| `results/figures/` | MSc report `.docx` (local only) |
 
 ```powershell
-git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
-cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
 python download_data.py --all
 ```
 
-GPU: install CUDA PyTorch from [pytorch.org](https://pytorch.org/get-started/locally/) first.
-
-</details>
+Details: [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md)
 
 ---
 
-## Documentation
+## Documentation index
 
 | Document | Description |
 |:---|:---|
-| [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Experiment A — paper alignment |
-| [`docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`](docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md) | Metric history and reproducibility |
-| [`docs/THESIS_RESULTS.md`](docs/THESIS_RESULTS.md) | Results chapter draft |
-| [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md) | What is / is not in GitHub |
+| [`docs/CAPSTONE_OVERVIEW.md`](docs/CAPSTONE_OVERVIEW.md) | Examiner summary — problem, phases, reproducibility |
+| [`docs/RESULTS.md`](docs/RESULTS.md) | Full results tables + interpretation |
+| [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper alignment + CLI reference |
+| [`docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`](docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md) | Metric history + protocol notes |
+| [`docs/THESIS_RESULTS.md`](docs/THESIS_RESULTS.md) | Thesis-ready tables (copy to Word locally) |
+| [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md) | Git vs local data policy |
 
 ---
 
-## Reproducibility and limitations
+## Reproducibility & limitations
 
 | Topic | Detail |
 |:---|:---|
-| **Random seed** | 42 (`experiments/config.py`) |
-| **Real data** | NASA `.mat`, Oxford `.mat`, CALCE `.xlsx` — download required |
-| **Experiment A split** | 80/20 chronological (paper uses 5-fold CV) |
-| **Experiment B epochs** | 25 + early stopping (MSc demo budget) |
-| **Experiment A epochs** | Up to 200 + early stopping (paper protocol) |
-| **Energy / latency** | Estimated on local hardware — comparative only |
+| **Seed** | 42 (`experiments/config.py`) |
+| **Exp A eval** | Stratified **5-fold CV** (paper protocol); `--chrono` for 80/20 debug only |
+| **Exp B/C eval** | Chronological 80/20 split (MSc default) |
+| **Committed JSON** | `paper_experiment_report.json` (CV) + `experiment_comparison_report.json` (A merged + B/C) |
+| **Training stability** | Best checkpoint saved per fold if validation diverges |
+| **Ethics** | Public datasets only; no human subjects |
+| **Honest reporting** | Oxford matches paper 0.021 on CV; CALCE remains harder (heterogeneous cells) |
+
+---
+
+## Testing
+
+```powershell
+python -m pytest tests/ -v
+```
+
+| Test file | Coverage |
+|:---|:---|
+| `test_paper_preprocessing.py` | ICA/DV/DC shapes, NaN sanitization |
+| `test_metrics.py` | RMSE, R², monotonicity, splits |
+| `test_loaders.py` | NASA/Oxford/CALCE real-data loaders |
 
 ---
 
 ## References
 
 1. Rahman, T. et al. Deep learning-based battery health prediction for enhancing electric vehicle performance. *Sci. Rep.* **16**, 9871 (2026). [https://doi.org/10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
-2. [NASA PCoE Battery Dataset](https://data.nasa.gov/dataset/li-ion-battery-aging-datasets)
-3. [Oxford Battery Degradation Dataset](https://ora.ox.ac.uk/objects/uuid:03ba4b01-cfed-46d3-9b1a-7d4a7bdf6fac)
-4. [CALCE Battery Data](https://calce.umd.edu/battery-data)
+2. NASA PCoE Battery Aging Datasets. [https://data.nasa.gov/dataset/li-ion-battery-aging-datasets](https://data.nasa.gov/dataset/li-ion-battery-aging-datasets)
+3. Oxford Battery Degradation Dataset 1. [https://ora.ox.ac.uk/objects/uuid:03ba4b01-cfed-46d3-9b1a-7d4a7bdf6fac](https://ora.ox.ac.uk/objects/uuid:03ba4b01-cfed-46d3-9b1a-7d4a7bdf6fac)
+4. CALCE Battery Research Group. [https://calce.umd.edu/battery-data](https://calce.umd.edu/battery-data)
 
 ---
 
-## License
+## License & contact
 
-Academic work — MSc Capstone. Contact [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07) for reuse.
+Academic work — MSc Capstone, University of Roehampton.  
+**Author:** [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07)
+
+For reproduction issues: open a GitHub issue or run `python scripts/verify_setup.py` first.

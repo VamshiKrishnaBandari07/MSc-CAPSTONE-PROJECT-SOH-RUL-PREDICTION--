@@ -3,14 +3,16 @@
 import os
 
 import numpy as np
+import torch
 from experiments.runtime import get_device
 from torch.utils.data import DataLoader
 
 from experiments.config import CHECKPOINT_DIR, NUM_CYCLES, SEQ_LEN
 from experiments.io_utils import load_checkpoint
+from experiments.paper_config import PAPER_SEQ_LEN
 from experiments.trainer import MScDataset, PaperDataset, split_indices
 from model import BatteryHealthPredictor
-from model_paper import BatterySOHPredictorPaper
+from model_paper import build_paper_model
 from preprocess import BatteryDatasetLoader
 from preprocess_paper import PaperDatasetLoader
 
@@ -20,7 +22,7 @@ def _predict_paper(features, soh, checkpoint_path, device):
     val_ds = PaperDataset(features[split_idx:], soh[split_idx:])
     loader = DataLoader(val_ds, batch_size=8, shuffle=False)
 
-    model = BatterySOHPredictorPaper(input_features=3).to(device)
+    model = build_paper_model(seq_len=PAPER_SEQ_LEN).to(device)
     load_checkpoint(model, checkpoint_path, device)
     model.eval()
 
@@ -86,7 +88,7 @@ def collect_dataset_predictions(dataset_name, paper_ckpt=None, msc_ckpt=None, ab
     device = get_device()
 
     paper_features, paper_soh = PaperDatasetLoader.load_dataset(
-        dataset_name, num_cycles=NUM_CYCLES, seq_len=SEQ_LEN
+        dataset_name, num_cycles=NUM_CYCLES, seq_len=PAPER_SEQ_LEN
     )
     msc_features, msc_soh, msc_rul = BatteryDatasetLoader.load_dataset(
         dataset_name, num_cycles=NUM_CYCLES, seq_len=SEQ_LEN

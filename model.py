@@ -113,13 +113,10 @@ class SelfAttention(nn.Module):
 
 class BatteryHealthPredictor(nn.Module):
     """
-    State-of-the-Art Hybrid CNN-TCN-LSTM-Attention Predictor
-    Matches the 2026 Nature Scientific Reports Paper:
-    - 1D CNN: Extracts local spatial peaks and shapes from dQ/dV, dV/dQ, dI/dV profiles.
-    - TCN: Captures medium-term causal degradation dynamics.
-    - LSTM: Models long-term cycle-to-cycle capacity fading.
-    - Attention: Identifies and weights crucial degradation phases.
-    - Joint Predictor: SOH regression head & RUL regression head.
+    MSc extension — joint SOH + RUL predictor (Experiment B).
+
+    Inspired by the Rahman et al. (2026) hybrid backbone but adds a dual output head
+    and physics-informed training; not part of the published paper reproduction.
     """
     def __init__(self, input_features=3, cnn_out_channels=32, tcn_channels=[32, 64], lstm_hidden=64, num_lstm_layers=1, dropout=0.2):
         super(BatteryHealthPredictor, self).__init__()

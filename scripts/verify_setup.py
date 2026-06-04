@@ -85,6 +85,7 @@ def check_datasets():
 def check_results():
     root = os.getcwd()
     files = [
+        "results/paper_experiment_report.json",
         "results/experiment_comparison_report.json",
         "results/computational_benchmark.json",
         "results/figures/fig04_soh_rmse_comparison.pdf",
@@ -121,12 +122,15 @@ def main():
     print("\nCommitted results:")
     check_results()
     check_provenance()
-    print("\nNext steps:")
+    print("\nNext steps (run in order):")
     print("  python download_data.py --all")
-    print("  python run_paper_experiment.py    # Experiment A (paper)")
-    print("  python run_experiments.py         # Experiments A + B + C")
+    print("  python run_paper_experiment.py --require-real --cpu   # Phase 1: Paper")
+    print("  python run_experiments.py --msc-only --require-real --cpu   # Phase 2: MSc")
     print("  python generate_figures.py")
-    print("  pytest tests/ -v")
+    print("  python scripts/sync_results_docs.py")
+    print("  python -m pytest tests/ -v")
+    print("\nOr one command: powershell -ExecutionPolicy Bypass -File scripts/run_full_pipeline.ps1")
+    print("\nDocs: docs/CAPSTONE_OVERVIEW.md | docs/RESULTS.md")
     print("=" * 60)
 
 
