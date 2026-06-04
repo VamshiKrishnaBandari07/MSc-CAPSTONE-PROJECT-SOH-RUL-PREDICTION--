@@ -18,8 +18,14 @@ PAPER_LR_SCHEDULER_FACTOR = 0.5
 PAPER_LR_SCHEDULER_PATIENCE = 5
 PAPER_GRAD_CLIP_NORM = 5.0
 PAPER_VOLTAGE_JITTER_V = 0.01  # ±10 mV augmentation on raw voltage before features
-PAPER_FEATURE_NOISE = 0.005  # training-time noise on normalised ICA/DV/DC channels
+PAPER_FEATURE_NOISE = 0.003  # light train noise (paired with voltage jitter scale in trainer)
 PAPER_DROPOUT = 0.15  # paper uses dropout regularization (default module 0.2)
+
+# Stable long runs (avoid early exit on occasional NaN epochs)
+PAPER_MIN_EPOCHS = 20
+PAPER_MAX_NONFINITE_VAL_SKIP = 8
+PAPER_USE_GLOBAL_SCALE = False  # fold-wise scaler in trainer prevents leakage + instability
+PAPER_FOLD_WISE_SCALE = True
 
 # Table 4: mean over five independent runs (paper Methods)
 PAPER_INDEPENDENT_RUNS = 5

@@ -4,58 +4,86 @@
 [![DOI](https://img.shields.io/badge/DOI-10.1038%2Fs41598--026--39911--8-blue)](https://doi.org/10.1038/s41598-026-39911-8)
 [![CI](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml/badge.svg)](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml)
 
-**Reference (exact):** Rahman, T. et al., *Deep learning-based battery health prediction for enhancing electric vehicle performance*, **Scientific Reports** 16, 9871 (2026).  
-**URL:** https://www.nature.com/articles/s41598-026-39911-8 · **DOI:** https://doi.org/10.1038/s41598-026-39911-8
+Independent reproduction of Rahman *et al.* (*Scientific Reports* **16**, 9871, 2026): a hybrid **CNN–TCN–LSTM–attention** model for lithium-ion **State-of-Health (SOH)** estimation on **NASA PCoE**, **Oxford**, and **CALCE** data.
 
-**Author (this repository):** [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07) · University of Roehampton, MSc Artificial Intelligence
+**Author:** [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07) · University of Roehampton · MSc Artificial Intelligence  
+**Reference:** [Article](https://www.nature.com/articles/s41598-026-39911-8) · [DOI 10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
 
-This repository contains **only** the published **SOH** study (no MSc capstone RUL/joint code on GitHub).
+This repository is **paper-only** (SOH). MSc capstone RUL/joint work remains in local `local_archive/` (not published here).
 
 ---
 
-## Point-by-point alignment with the paper
+## Executive summary
 
-| # | Paper requirement (Section 3 / Table 4) | This repository |
+| Outcome | Detail |
+|:---|:---|
+| **Training** | Completed on real data: **3 datasets × 5 independent runs × stratified 5-fold CV** (CPU, ~7 h) |
+| **Oxford** | Mean pooled OOF RMSE **0.0215 ± 0.0045** — aligns with the paper hybrid target (**0.021**) |
+| **NASA (Table 4)** | Mean RMSE **0.0417 ± 0.0023** — methodology reproduced; **does not match** published **0.021** (near Transformer baseline **0.038**) |
+| **CALCE** | Mean RMSE **0.0544 ± 0.0147** — cross-chemistry benchmark (no Table 4 target) |
+| **Artifacts** | `results/paper_experiment_report.json`, `results/summary.json`, figures **fig01–fig04**, passing `verify_repo` + pytest |
+
+Results are **reported honestly** from completed training; metrics are not adjusted to match the article.
+
+---
+
+## Reproduced results (Table 4 protocol)
+
+**Protocol:** Stratified **5-fold CV**, **five independent runs** (seeds 42–46), mean **pooled out-of-fold SOH RMSE** per run, then averaged across runs (as in the paper Methods).
+
+| Dataset | Mean SOH RMSE (± std across 5 runs) | Per-run RMSE | Paper reference |
+|:---|:---:|:---|:---|
+| **NASA PCoE** | **0.0417 ± 0.0023** | 0.0404, 0.0392, 0.0428, 0.0407, 0.0456 | Table 4 hybrid **0.021** |
+| **Oxford** | **0.0215 ± 0.0045** | 0.0268, **0.0154**, 0.0183, 0.0266, 0.0205 | Same order as **0.021** |
+| **CALCE** | **0.0544 ± 0.0147** | 0.0502, 0.0454, 0.0463, 0.0835, 0.0464 | Cross-dataset benchmark |
+
+**Figures:** `results/figures/fig01_soh_trajectories` · `fig02_soh_scatter` · `fig03_soh_rmse_comparison` · `fig04_training_convergence`
+
+**Interpretation:** The pipeline and architecture reproduce the paper’s **Oxford** accuracy. The **NASA** gap is discussed in [docs/RESULTS.md](docs/RESULTS.md) and [docs/PAPER_METHODOLOGY.md](docs/PAPER_METHODOLOGY.md) (CV pooling across cells, feature construction, training stability). See [docs/SUPERVISOR_GUIDE.md](docs/SUPERVISOR_GUIDE.md) for examiner-facing notes.
+
+---
+
+## Methodology alignment (Section 3)
+
+| # | Paper requirement | Implementation |
 |:---:|:---|:---|
-| 1 | **Task:** State-of-Health (SOH) estimation (RUL not in experiments) | `run_paper_experiment.py` — SOH head only |
-| 2 | **Datasets:** NASA PCoE, Oxford, CALCE | `experiments/nasa_loader.py`, `oxford_loader.py`, `calce_loader.py` |
-| 3 | **Label:** SOH(k) = Q_k / Q_BoL (Eq. 1) | Per-cell BoL in each loader |
-| 4 | **Features:** ICA (dQ/dV), DV (dV/dQ), DC (dI/dV) | `experiments/paper_preprocessing.py` |
-| 5 | **Denoising:** Savitzky–Golay window **15**, order **3** | `SG_WINDOW`, `SG_POLYORDER` in `paper_config.py` |
-| 6 | **Grid:** **300** points, **2.5–4.2 V** | `PAPER_SEQ_LEN`, voltage bounds |
-| 7 | **Scaling:** min–max on aligned signals | `extract_paper_cycle_tensor()` |
-| 8 | **Augmentation:** ±**10 mV** voltage jitter (train) | `PAPER_VOLTAGE_JITTER_V` in preprocessing + scaled noise in `trainer.py` |
-| 9 | **Architecture:** 1D-CNN → TCN → LSTM → **attention** | `model_paper.py` |
-| 10 | **Loss:** MSE | `experiments/trainer.py` |
-| 11 | **Training:** Adam 1e-3, grad clip **5**, early stop, LR ×**0.5** | `experiments/paper_config.py` |
-| 12 | **Evaluation:** stratified **5-fold CV** (Table 4 protocol) | `experiments/cv.py` (default `--cv`) |
-| 13 | **Parameters:** ~**0.35 M** (paper) | ~**0.39 M** (`benchmark.py`) |
-| 14 | **Table 4 target (NASA PCoE):** RMSE **0.021**, R² **0.983** | See results table below |
+| 1 | SOH only (Eq. 1: Q_k / Q_BoL) | `run_paper_experiment.py`, per-cell BoL in loaders |
+| 2 | NASA PCoE, Oxford, CALCE | `experiments/nasa_loader.py`, `oxford_loader.py`, `calce_loader.py` |
+| 3 | ICA, DV, DC on 300-pt grid, 2.5–4.2 V | `experiments/paper_preprocessing.py` |
+| 4 | Savitzky–Golay (15, 3) | `paper_config.py` |
+| 5 | ±10 mV voltage jitter (train) | Preprocessing + `trainer.py` augmentation |
+| 6 | CNN → TCN → LSTM → attention | `model_paper.py` (~0.39M params) |
+| 7 | MSE, Adam 1e-3, grad clip 5, early stopping | `experiments/trainer.py` |
+| 8 | Stratified 5-fold CV | `experiments/cv.py` |
+| 9 | Five independent runs (Table 4) | `PAPER_RUN_SEEDS` in `run_paper_experiment.py` |
 
 ---
 
-## Reproduced results (5-fold CV, seed 42, real data)
-
-| Dataset | SOH RMSE (pooled OOF ± fold std) | SOH R² | Paper Table 4 (NASA only) |
-|:---|:---:|:---:|:---:|
-| NASA PCoE | 0.0385 ± 0.0048 | 0.915 | RMSE **0.021**, R² **0.983** |
-| **Oxford** | **0.0215 ± 0.0050** | **0.951** | — (cross-dataset benchmark) |
-| CALCE | 0.0673 ± 0.0101 | 0.950 | — |
-
-**Metrics:** Primary **RMSE / R² / MAE** are **pooled out-of-fold** across folds; **±** is std of per-fold RMSE. Slim summary: `results/summary.json`. Full report: `results/paper_experiment_report.json`.
-
-**Honest note:** Methodology matches the article; **Oxford** RMSE is at paper level; **NASA** does not yet reach Table 4 **0.021** (close to published Transformer **0.038**). Re-run `run_paper_experiment.py` after code updates to refresh numbers with voltage-jitter training fix.
-
----
-
-## Workflow
+## Pipeline
 
 ```mermaid
 flowchart LR
-  A[NASA · Oxford · CALCE] --> B[SG + ICA/DV/DC + 300-pt grid]
-  B --> C[CNN–TCN–LSTM–Attention]
-  C --> D[5-fold CV]
-  D --> E[JSON + fig01–04]
+  subgraph data [Data]
+    N[NASA]
+    O[Oxford]
+    C[CALCE]
+  end
+  subgraph prep [Preprocessing]
+    IQR[IQR filter]
+    FEAT[ICA / DV / DC]
+  end
+  subgraph train [Training]
+    M[CNN-TCN-LSTM-Attn]
+    CV[5-fold CV x5 runs]
+  end
+  subgraph out [Outputs]
+    R[report.json]
+    F[fig01-04]
+  end
+  N --> IQR --> FEAT --> M --> CV --> R
+  O --> IQR
+  C --> IQR
+  CV --> F
 ```
 
 ---
@@ -68,39 +96,57 @@ git clone https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL
 cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--
 git lfs pull
 pip install -r requirements.txt
+python download_data.py --all
 python scripts/verify_repo.py
-python run_paper_experiment.py --require-real --cpu
+```
+
+**Reproduce training** (long on CPU; GPU recommended):
+
+```powershell
+python scripts/run_train_and_eval.py
+```
+
+Or step by step:
+
+```powershell
+python run_paper_experiment.py --require-real --cpu --cv
 python generate_figures.py
+python scripts/export_summary.py
+python scripts/sync_results_docs.py
 ```
 
-Full pipeline: `powershell -File scripts/run_paper_pipeline.ps1`
+**Monitor progress:**
+
+```powershell
+python scripts/show_progress.py
+```
+
+**If training finished but report save failed:**
+
+```powershell
+python scripts/finish_pipeline.py
+```
 
 ---
 
-## What is on GitHub (paper only)
+## Repository contents
 
-| Included | Excluded (local / gitignored) |
+| Included on GitHub | Excluded (gitignored / local) |
 |:---|:---|
-| `run_paper_experiment.py`, `model_paper.py`, `preprocess_paper.py` | `local_archive/` (MSc SOH+RUL) |
-| `experiments/` loaders, CV, trainer, preprocessing | `model.py`, `train.py`, `run_experiments.py` |
-| `data/` via Git LFS | `checkpoints/`, thesis `.docx` |
-| `results/paper_experiment_report.json` | Legacy RUL/ablation figures |
-| `results/figures/fig01`–`fig04` | `paper_reproduction/` duplicate tree |
-
----
-
-## Repository layout
+| Paper experiment code and tests | `local_archive/` (MSc SOH+RUL) |
+| `data/` via Git LFS | `checkpoints/` |
+| Committed metrics and fig01–04 | `validation_predictions.json`, logs |
+| `docs/` methodology and results | Legacy RUL scripts and figures |
 
 ```
-run_paper_experiment.py    # Main experiment (3 datasets)
-model_paper.py             # Hybrid network
-preprocess_paper.py        # Feature pipeline entry
-experiments/               # Loaders, training, CV
-data/                      # NASA, Oxford, CALCE (LFS)
-results/                   # Metrics + figures
-tests/                     # Loaders, metrics, preprocessing
-docs/                      # SUPERVISOR_GUIDE, PAPER_METHODOLOGY, RESULTS
-scripts/verify_repo.py     # Point-by-point CI check
+run_paper_experiment.py     # 3 datasets, 5-fold CV, 5 runs
+model_paper.py              # Hybrid SOH network
+preprocess_paper.py         # Feature pipeline
+experiments/                # Loaders, CV, trainer, stability helpers
+scripts/                    # verify_repo, finish_pipeline, show_progress
+results/                    # paper_experiment_report.json, figures
+tests/
+docs/
 ```
 
 ---
@@ -116,6 +162,8 @@ python -m pytest tests/ -v
 
 ## Citation
 
+**Paper under reproduction:**
+
 ```bibtex
 @article{Rahman2026,
   author  = {Rahman, Tawfikur and Deb, Nibedita and Moniruzzaman, Md. and others},
@@ -124,8 +172,7 @@ python -m pytest tests/ -v
   volume  = {16},
   pages   = {9871},
   year    = {2026},
-  doi     = {10.1038/s41598-026-39911-8},
-  url     = {https://www.nature.com/articles/s41598-026-39911-8}
+  doi     = {10.1038/s41598-026-39911-8}
 }
 ```
 

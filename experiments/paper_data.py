@@ -51,9 +51,12 @@ def global_minmax_channels(features: np.ndarray) -> np.ndarray:
 
 
 def prepare_paper_tensors(features: np.ndarray, soh: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """IQR filter then global channel scaling."""
+    """IQR filter; optional global scale (off by default — fold scaler in trainer)."""
+    from experiments.paper_config import PAPER_USE_GLOBAL_SCALE
+
     features, soh, removed = filter_cycles_iqr(features, soh)
     if removed:
         print(f"[Paper] IQR filter removed {removed} outlier cycles ({len(soh)} remaining).")
-    features = global_minmax_channels(features)
+    if PAPER_USE_GLOBAL_SCALE:
+        features = global_minmax_channels(features)
     return features, soh

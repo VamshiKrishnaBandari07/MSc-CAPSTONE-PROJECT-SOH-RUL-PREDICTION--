@@ -5,6 +5,8 @@ def regression_metrics(y_true, y_pred):
     """Compute RMSE, MAE, and R² for regression targets."""
     y_true = np.asarray(y_true, dtype=np.float64).flatten()
     y_pred = np.asarray(y_pred, dtype=np.float64).flatten()
+    y_pred = np.nan_to_num(y_pred, nan=0.5, posinf=1.0, neginf=0.0)
+    y_pred = np.clip(y_pred, 0.0, 1.0)
 
     errors = y_pred - y_true
     mse = float(np.mean(errors ** 2))

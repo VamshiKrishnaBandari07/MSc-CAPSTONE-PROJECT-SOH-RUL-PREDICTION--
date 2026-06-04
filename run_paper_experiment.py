@@ -77,8 +77,30 @@ def run_paper_experiment(
     n_runs = n_runs if n_runs is not None else (PAPER_INDEPENDENT_RUNS if eval_protocol == "cv5" else 1)
     run_seeds = PAPER_RUN_SEEDS[: max(1, n_runs)]
     ensure_dirs()
-    device = configure_runtime(force_cpu=force_cpu)
+    from experiments.keep_awake import KeepSystemAwake
 
+    with KeepSystemAwake():
+        device = configure_runtime(force_cpu=force_cpu)
+        return _run_training_loop(
+            datasets=datasets,
+            device=device,
+            batch_size=batch_size,
+            max_epochs=max_epochs,
+            require_real=require_real,
+            eval_protocol=eval_protocol,
+            run_seeds=run_seeds,
+        )
+
+
+def _run_training_loop(
+    datasets,
+    device,
+    batch_size,
+    max_epochs,
+    require_real,
+    eval_protocol,
+    run_seeds,
+):
     print("\n" + "=" * 96)
     print("PAPER REPRODUCTION — Hybrid CNN-TCN-LSTM-Attention (SOH)")
     print("Scientific Reports (2026) | DOI: 10.1038/s41598-026-39911-8")
@@ -159,7 +181,8 @@ def run_paper_experiment(
             "loss": "MSE",
             "outputs": "SOH only",
             "augmentation": "±10 mV voltage jitter + feature noise (train only)",
-            "preprocessing": "IQR outlier removal + global per-channel min-max (paper Section 3)",
+            "preprocessing": "IQR outlier removal + fold-wise train scaler (no leakage)",
+            "training_stability": "min 20 epochs, non-finite recovery, clamped SOH, keep-awake on Windows",
             "cross_validation": "stratified 5-fold" if eval_protocol == "cv5" else "chronological 80/20",
             "independent_runs": len(run_seeds),
             "run_seeds": run_seeds,

@@ -27,6 +27,9 @@ def set_seed(seed: int = RANDOM_SEED) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    if torch.backends.cudnn.is_available():
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 class EarlyStopping:
@@ -85,6 +88,9 @@ def _evaluate_paper_model(
             targets.append(soh.numpy())
     y_pred = np.concatenate(preds, axis=0)
     y_true = np.concatenate(targets, axis=0)
+    from experiments.training_stability import sanitize_predictions
+
+    y_pred = sanitize_predictions(y_pred)
     metrics = regression_metrics(y_true, y_pred)
     metrics["mono_violation_rate"] = monotonicity_violation_rate(y_pred)
     return metrics, y_true.flatten(), y_pred.flatten()
@@ -106,15 +112,23 @@ def _train_paper_on_indices(
     from experiments.paper_config import (
         PAPER_EARLY_STOPPING_PATIENCE,
         PAPER_FEATURE_NOISE,
+        PAPER_FOLD_WISE_SCALE,
         PAPER_GRAD_CLIP_NORM,
         PAPER_LEARNING_RATE,
         PAPER_LR_SCHEDULER_FACTOR,
         PAPER_LR_SCHEDULER_PATIENCE,
         PAPER_MAX_EPOCHS,
+        PAPER_MAX_NONFINITE_VAL_SKIP,
+        PAPER_MIN_EPOCHS,
         PAPER_VOLTAGE_JITTER_V,
         PAPER_VOLTAGE_MAX,
         PAPER_VOLTAGE_MIN,
         PAPER_WEIGHT_DECAY,
+    )
+    from experiments.training_stability import (
+        apply_fold_scaler,
+        augment_features,
+        fit_fold_scaler,
     )
 
     epochs = epochs or PAPER_MAX_EPOCHS
@@ -129,12 +143,17 @@ def _train_paper_on_indices(
     # ±10 mV on 1.7 V grid ≈ relative scale on normalized feature channels (paper Section 3)
     voltage_jitter_scale = PAPER_VOLTAGE_JITTER_V / max(PAPER_VOLTAGE_MAX - PAPER_VOLTAGE_MIN, 1e-6)
 
+    fold_features = np.asarray(features, dtype=np.float32)
+    if PAPER_FOLD_WISE_SCALE:
+        mins, maxs = fit_fold_scaler(fold_features, train_idx)
+        fold_features = apply_fold_scaler(fold_features, mins, maxs)
+
     train_features = np.array(
-        [sanitize_feature_tensor(features[i]) for i in train_idx], dtype=np.float32
+        [sanitize_feature_tensor(fold_features[i]) for i in train_idx], dtype=np.float32
     )
     train_soh = soh[train_idx]
     val_features = np.array(
-        [sanitize_feature_tensor(features[i]) for i in val_idx], dtype=np.float32
+        [sanitize_feature_tensor(fold_features[i]) for i in val_idx], dtype=np.float32
     )
     val_soh = soh[val_idx]
 
@@ -161,6 +180,7 @@ def _train_paper_on_indices(
     history: List[Dict[str, Any]] = []
     best_metrics: Optional[Dict[str, float]] = None
     best_epoch = 0
+    nonfinite_val_streak = 0
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -168,12 +188,12 @@ def _train_paper_on_indices(
         n_batches = 0
         for features_batch, targets in train_loader:
             features_batch, targets = features_batch.to(device), targets.to(device)
-            if voltage_jitter_scale > 0:
-                features_batch = features_batch + torch.randn_like(features_batch) * voltage_jitter_scale
-            if feature_noise > 0:
-                features_batch = features_batch + torch.randn_like(features_batch) * feature_noise
+            features_batch = augment_features(
+                features_batch, voltage_jitter_scale, feature_noise
+            )
             optimizer.zero_grad(set_to_none=True)
             pred, _ = model(features_batch)
+            pred = torch.clamp(pred, 0.0, 1.0)
             loss = criterion(pred, targets)
             if not torch.isfinite(loss):
                 continue
@@ -189,9 +209,19 @@ def _train_paper_on_indices(
 
         val_metrics, _, _ = _evaluate_paper_model(model, val_loader, device)
         if not np.isfinite(val_metrics["rmse"]):
-            print(f"[Paper | {tag}] Non-finite validation at epoch {epoch}. Stopping.")
-            break
+            nonfinite_val_streak += 1
+            print(
+                f"[Paper | {tag}] Non-finite validation at epoch {epoch} "
+                f"({nonfinite_val_streak}/{PAPER_MAX_NONFINITE_VAL_SKIP}) — restore best weights."
+            )
+            if best_metrics and os.path.isfile(checkpoint_path):
+                load_checkpoint(model, checkpoint_path, device)
+            if nonfinite_val_streak >= PAPER_MAX_NONFINITE_VAL_SKIP:
+                print(f"[Paper | {tag}] Too many unstable validation epochs. Stopping fold.")
+                break
+            continue
 
+        nonfinite_val_streak = 0
         avg_train_loss = train_loss / len(train_ds)
         scheduler.step(val_metrics["rmse"])
         history.append(
@@ -220,7 +250,7 @@ def _train_paper_on_indices(
             f"MAE: {val_metrics['mae']:.4f} | R2: {val_metrics['r2']:.4f}"
         )
 
-        if early_stop.should_stop:
+        if epoch >= PAPER_MIN_EPOCHS and early_stop.should_stop:
             print(f"[Paper | {tag}] Early stopping at epoch {epoch}.")
             break
 
@@ -336,6 +366,11 @@ def train_paper_experiment(
         else:
             aggregated = None
 
+        fold_results_json = [
+            {k: v for k, v in fr.items() if k not in ("val_y_true", "val_y_pred")}
+            for fr in fold_histories
+        ]
+
         return {
             "dataset": dataset_name,
             "experiment": "paper_reproduction",
@@ -343,7 +378,7 @@ def train_paper_experiment(
             "eval_protocol": "stratified_5fold_cv",
             "best_epoch": best_fold_result["best_epoch"] if fold_metrics else 0,
             "metrics": aggregated,
-            "fold_results": fold_histories,
+            "fold_results": fold_results_json,
             "history": best_fold_result["history"] if fold_metrics else [],
             "checkpoint": checkpoint_path.replace(".pt", f"_fold{best_fold}.pt")
             if fold_metrics

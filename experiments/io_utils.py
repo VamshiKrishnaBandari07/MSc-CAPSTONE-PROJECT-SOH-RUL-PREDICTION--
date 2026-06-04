@@ -1,9 +1,18 @@
 import json
 import os
 
+import numpy as np
 import torch
 
 from experiments.config import CHECKPOINT_DIR, RESULTS_DIR
+
+
+def _json_default(obj):
+    if isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 def ensure_dirs():
@@ -30,5 +39,5 @@ def save_json(data, filename):
     ensure_dirs()
     path = os.path.join(RESULTS_DIR, filename)
     with open(path, "w", encoding="utf-8") as handle:
-        json.dump(data, handle, indent=2)
+        json.dump(data, handle, indent=2, default=_json_default)
     return path
