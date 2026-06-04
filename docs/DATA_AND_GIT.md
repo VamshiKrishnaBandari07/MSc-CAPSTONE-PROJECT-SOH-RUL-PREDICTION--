@@ -37,8 +37,8 @@ Listed in `.gitignore`.
 
 ```powershell
 git lfs install
-git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION.git
-cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION
+git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--
 git lfs pull
 python scripts/verify_setup.py
 ```
