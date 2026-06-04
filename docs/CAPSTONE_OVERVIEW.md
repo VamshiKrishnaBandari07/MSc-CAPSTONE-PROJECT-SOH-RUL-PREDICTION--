@@ -1,7 +1,7 @@
 # MSc Capstone — Project Overview
 
 **Author:** Vamshi Krishna Bandari  
-**Programme:** MSc Computing / Data Science / AI (UK)  
+**Programme:** MSc Artificial Intelligence (UK)  
 **Institution:** University of Roehampton  
 **Artefact:** Reproducible deep learning pipeline for battery health prognostics  
 
@@ -33,7 +33,7 @@ Phase 1 establishes credibility against a peer-reviewed baseline. Phase 2 demons
 | Oxford Battery Degradation 1 | 519 | [Oxford ORA](https://ora.ox.ac.uk/objects/uuid:03ba4b01-cfed-46d3-9b1a-7d4a7bdf6fac) |
 | CALCE CS2 (33, 35, 36) | 2,703 | [CALCE UMD](https://calce.umd.edu/battery-data) |
 
-Raw files (~500 MB) are downloaded locally via `python download_data.py --all` — not stored in git.
+Raw files (~437 MB) are included in the repository via **Git LFS** (`data/NASA/`, `data/Oxford/`, `data/CALCE/`). After clone, run `git lfs pull`. Fallback: `python download_data.py --all`.
 
 ---
 
@@ -54,7 +54,7 @@ Experiment A uses **stratified 5-fold CV** (paper protocol). Experiments B and C
 
 ```powershell
 pip install -r requirements.txt
-python download_data.py --all
+git lfs pull
 python scripts/verify_setup.py
 python run_paper_experiment.py --require-real --cpu
 python run_experiments.py --msc-only --require-real --cpu

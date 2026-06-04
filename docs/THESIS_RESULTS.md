@@ -19,7 +19,7 @@ Two formal experiments plus ablation:
 | **B** | MSc extension | Joint head | MSE + RUL + monotonicity |
 | **C** | Ablation | Same as B | MSE + RUL (no monotonicity) |
 
-**Datasets:** NASA (636 cycles), Oxford (519), CALCE (2,703) — real public data via `download_data.py --all`.
+**Datasets:** NASA (636 cycles), Oxford (519), CALCE (2,703) — included via Git LFS; fallback `download_data.py --all`.
 
 **Hardware:** CPU training supported (`--cpu`); batch size 4; PyTorch 8 threads.
 
@@ -79,15 +79,16 @@ Joint SOH+RUL in one forward pass; SOH accuracy trades off vs Experiment A (expe
 
 ## 4.6 Discussion
 
-**Strengths:** Reproducible pipeline; real-data evaluation; paper architecture validated directionally; MSc model 95% smaller than Transformer with joint RUL.
+**Strengths:** Reproducible pipeline; real-data evaluation on three public benchmarks; Experiment A Oxford RMSE **0.0215 ± 0.0050** matches paper target under 5-fold CV; MSc model **0.067 M** parameters with joint RUL.
 
-**Limitations:** SOH RMSE above paper 0.021 on committed run; CALCE MSc performance limited by label noise; monotonicity violations ~35–51%; chronological split in committed JSON vs paper 5-fold CV.
+**Limitations:** NASA/CALCE SOH RMSE above paper 0.021; Experiment B uses chronological 80/20 (not 5-fold CV); NASA SOH R² negative in joint model; monotonicity loss inconsistent across datasets; non-finite validation on some CV folds (best checkpoint retained).
 
 **Comparison to state of the art:**
 
-| Criterion | Transformer | Paper hybrid | This work (A) | This work (B) |
+| Criterion | Transformer | Paper hybrid | This work (A, CV) | This work (B, 80/20) |
 |:---|:---:|:---:|:---:|:---:|
-| NASA SOH RMSE | 0.038 | 0.021 | **0.032** | 0.078 |
+| Oxford SOH RMSE | 0.038 | 0.021 | **0.0215 ± 0.0050** | 0.041 |
+| NASA SOH RMSE | 0.038 | 0.021 | **0.0385 ± 0.0048** | 0.112 |
 | RUL prediction | No | No | No | **Yes** |
 | Physics loss | No | No | No | **Yes** |
 | Params (M) | 1.25 | 0.35 | 0.39 | **0.067** |
@@ -96,8 +97,8 @@ Joint SOH+RUL in one forward pass; SOH accuracy trades off vs Experiment A (expe
 
 ## 4.7 Summary
 
-Experiment A validates the Scientific Reports (2026) implementation on three public datasets. Experiment B delivers the MSc contribution: joint SOH+RUL at embedded-friendly compute. All metrics and figures regenerate from committed code and `results/experiment_comparison_report.json`.
+Experiment A validates the Scientific Reports (2026) implementation under **stratified 5-fold CV**. Experiment B delivers the MSc contribution: joint SOH+RUL at embedded-friendly compute. All metrics and figures regenerate from committed code, LFS datasets, and JSON reports.
 
 ---
 
-*Regenerate: `python run_experiments.py --require-real --cpu` then `python generate_figures.py`*
+*Regenerate: `powershell -ExecutionPolicy Bypass -File scripts/run_full_pipeline.ps1`*

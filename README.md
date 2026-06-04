@@ -7,13 +7,17 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c)](https://pytorch.org)
 [![Python](https://img.shields.io/badge/Python-3.9+-3776ab)](https://www.python.org)
 [![Tests](https://img.shields.io/badge/tests-pytest-blue)](tests/)
+[![CI](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION/actions/workflows/ci.yml/badge.svg)](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION/actions/workflows/ci.yml)
 
 Reproducible research artefact: **paper-exact battery SOH prediction** (Experiment A) followed by an **MSc extension** for joint SOH+RUL with physics-informed learning (Experiments B & C). Evaluated on real **NASA**, **Oxford**, and **CALCE** datasets.
 
+> **Programme:** MSc Artificial Intelligence, University of Roehampton (UK)  
+> **Repository:** [MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION) — see [`docs/GITHUB.md`](docs/GITHUB.md) if migrating from the legacy URL.
+
 ```bash
 git lfs install
-git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
-cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
+git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION
 git lfs pull
 ```
 
@@ -214,8 +218,8 @@ scripts/sync_results_docs.py  # Refresh docs/RESULTS.md from JSON
 
 ```powershell
 git lfs install
-git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
-cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
+git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION
 git lfs pull
 ```
 
@@ -234,6 +238,7 @@ Details: [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md)
 | [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper alignment + CLI reference |
 | [`docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md`](docs/PAPER_EXPERIMENT_METRIC_COMPARISON.md) | Metric history + protocol notes |
 | [`docs/THESIS_RESULTS.md`](docs/THESIS_RESULTS.md) | Thesis-ready tables (copy to Word locally) |
+| [`docs/GITHUB.md`](docs/GITHUB.md) | Repository naming, clone URLs, CI |
 | [`docs/DATA_AND_GIT.md`](docs/DATA_AND_GIT.md) | Git vs local data policy |
 
 ---
@@ -277,7 +282,7 @@ python -m pytest tests/ -v
 
 ## License & contact
 
-Academic work — MSc Capstone, University of Roehampton.  
+MIT License — see [`LICENSE`](LICENSE). Academic capstone work, University of Roehampton.  
 **Author:** [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07)
 
 For reproduction issues: open a GitHub issue or run `python scripts/verify_setup.py` first.

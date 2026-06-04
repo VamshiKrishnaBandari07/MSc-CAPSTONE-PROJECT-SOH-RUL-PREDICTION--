@@ -37,13 +37,20 @@ Listed in `.gitignore`.
 
 ```powershell
 git lfs install
-git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-.git
-cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICATION-
+git clone git@github.com:VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION.git
+cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION
 git lfs pull
 python scripts/verify_setup.py
 ```
 
 If LFS files are missing after clone, run `git lfs pull`. Alternative: `python download_data.py --all`.
+
+## Reproduce verified results
+
+```powershell
+pip install -r requirements.txt
+git lfs pull
+python scripts/verify_setup.py
 
 # Phase 1 — Paper
 python run_paper_experiment.py --require-real --cpu
