@@ -123,7 +123,7 @@ def iter_calce_discharge_cycles(cell_dir):
 
         cap_scalar = float(per_cycle_caps[i])
         soh = float(np.clip(cap_scalar / initial_capacity, 0.0, 1.2))
-        _ = eol_idx  # reserved for RUL in preprocess wrapper
+        _ = eol_idx  # cycle index at end-of-life threshold
 
         yield voltage, current, cap_ah, soh
 

@@ -23,11 +23,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Paper repository verification
+        run: python scripts/verify_repo.py
+
       - name: Run unit tests
         run: python -m pytest tests/ -v --tb=short
-
-      - name: Verify paper report has three datasets
-        run: python -c "import json; r=json.load(open('results/paper_experiment_report.json')); assert len(r['results'])==3, r['results']; print('OK: NASA, Oxford, CALCE')"
-
-      - name: Verify setup script
-        run: python scripts/verify_setup.py

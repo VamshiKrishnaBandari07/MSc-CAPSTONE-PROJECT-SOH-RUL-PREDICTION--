@@ -16,7 +16,7 @@ def dataset_rng(dataset_name: str) -> np.random.Generator:
 
 
 def generate_shared_labels(dataset_name: str = "NASA", num_cycles: int = 150) -> tuple:
-    """Synthetic SOH/RUL trajectories for ``require_real=False`` fallback only."""
+    """Synthetic SOH trajectories for ``require_real=False`` fallback only."""
     if dataset_name == "NASA":
         eol_threshold = 0.70
         capacity_fade_rate = 0.28

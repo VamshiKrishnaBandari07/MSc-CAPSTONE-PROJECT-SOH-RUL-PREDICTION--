@@ -6,27 +6,27 @@
 [![CI](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml/badge.svg)](https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Reproduction of the hybrid deep learning model for lithium-ion **state-of-health (SOH)** estimation (Rahman et al., *Scientific Reports*, 2026).
+Academic reproduction of **Rahman et al. (2026)** — hybrid deep learning for lithium-ion **state-of-health (SOH)** on **NASA**, **Oxford**, and **CALCE**.
 
 | | |
 |:---|:---|
 | **Author** | [Vamshi Krishna Bandari](https://github.com/VamshiKrishnaBandari07) |
-| **Programme** | MSc Artificial Intelligence, University of Roehampton (UK) |
+| **Institution** | University of Roehampton — MSc Artificial Intelligence |
 | **Repository** | https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION-- |
 
 ---
 
-## Summary for examiners
+## Results (paper experiment — 5-fold CV, seed 42)
 
-| Item | Status |
-|:---|:---|
-| Paper methodology (ICA/DV/DC, 300-pt grid, hybrid model, 5-fold CV) | Implemented |
-| **Three datasets** (NASA, Oxford, CALCE) | Full paper experiment in JSON |
-| Oxford SOH RMSE vs published **0.021** | **0.0215 ± 0.0050** (aligned) |
-| NASA SOH RMSE vs published **0.021** | **0.0385 ± 0.0048** (not matched; ~Transformer 0.038) |
-| Figures | `results/figures/fig01`–`fig04` |
+| Dataset | SOH RMSE (mean ± std) | SOH R² |
+|:---|:---:|:---:|
+| **Oxford** | **0.0215 ± 0.0050** | 0.951 |
+| NASA | 0.0385 ± 0.0048 | 0.915 |
+| CALCE | 0.0673 ± 0.0101 | 0.950 |
 
-> **Methodology reproduced successfully; exact NASA numerical match was not achieved.** See [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md).
+Published hybrid target: **0.021** (Oxford aligns; NASA does not — see note below).
+
+Artifacts: `results/paper_experiment_report.json` · Figures: `results/figures/fig01`–`fig04`
 
 ---
 
@@ -34,46 +34,17 @@ Reproduction of the hybrid deep learning model for lithium-ion **state-of-health
 
 ```mermaid
 flowchart TB
-  subgraph data [Data]
-    NASA[NASA .mat]
-    OXF[Oxford .mat]
-    CAL[CALCE .xlsx]
-  end
-  subgraph prep [Preprocessing]
-    ICA[ICA dQ/dV]
-    DV[DV dV/dQ]
-    DC[DC dI/dV]
-    GRID[300-pt grid 2.5-4.2 V]
-  end
-  subgraph model [Hybrid model]
-    CNN[1D CNN]
-    TCN[TCN]
-    LSTM[LSTM]
-    ATT[Attention]
-    SOH[SOH head]
-  end
-  subgraph eval [Evaluation]
-    CV[Stratified 5-fold CV]
-    MET[RMSE / R²]
-  end
-  NASA --> ICA
-  OXF --> ICA
-  CAL --> ICA
-  ICA --> GRID
-  DV --> GRID
-  DC --> GRID
-  GRID --> CNN --> TCN --> LSTM --> ATT --> SOH
-  SOH --> CV --> MET
-  MET --> JSON[paper_experiment_report.json]
-  MET --> FIGS[fig01-fig04]
+  D1[NASA] --> F[ICA / DV / DC]
+  D2[Oxford] --> F
+  D3[CALCE] --> F
+  F --> G[300-pt voltage grid]
+  G --> M[CNN - TCN - LSTM - Attention]
+  M --> CV[5-fold stratified CV]
+  CV --> R[RMSE and R2]
+  R --> OUT[JSON + figures]
 ```
 
 ---
-
-## Reference
-
-**Rahman et al.** Hybrid deep learning approach for battery state-of-health prediction. *Scientific Reports* **16**, 9871 (2026).  
-DOI: [10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
 
 ## Quick start
 
@@ -83,58 +54,52 @@ git clone https://github.com/VamshiKrishnaBandari07/MSc-CAPSTONE-PROJECT-SOH-RUL
 cd MSc-CAPSTONE-PROJECT-SOH-RUL-PREDICTION--
 git lfs pull
 pip install -r requirements.txt
-python scripts/verify_setup.py
+python scripts/verify_repo.py
 ```
 
-## Paper experiment (all three datasets)
+**Run paper experiment (all 3 datasets):**
 
 ```powershell
 python run_paper_experiment.py --require-real --cpu
-python scripts/sanitize_paper_report.py
 python generate_figures.py
 ```
 
-Runs **NASA → Oxford → CALCE** with stratified **5-fold CV** (~2–8 h on CPU). Re-running one dataset merges into the existing report (does not delete the others).
+Or: `powershell -File scripts/run_paper_pipeline.ps1` (~2–8 h CPU)
 
-## Results (stratified 5-fold CV)
+---
 
-| Dataset | SOH RMSE (mean ± std) | SOH R² |
-|:---|:---:|:---:|
-| NASA | 0.0385 ± 0.0048 | 0.915 |
-| Oxford | **0.0215 ± 0.0050** | 0.951 |
-| CALCE | 0.0673 ± 0.0101 | 0.950 |
-
-Source: `results/paper_experiment_report.json` · Plots: `results/figures/`
-
-## Methodology
-
-1. **NASA, Oxford, CALCE** — real data via Git LFS  
-2. **ICA / DV / DC** on 300-point voltage grid (2.5–4.2 V), Savitzky–Golay (15, 3)  
-3. **CNN → TCN → LSTM → attention** (~0.39M parameters), MSE loss  
-4. **Stratified 5-fold CV**, random seed **42**
-
-Details: [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md)
-
-## Repository layout
+## Repository structure
 
 ```
-├── data/                   # NASA, Oxford, CALCE (LFS)
-├── experiments/            # loaders, CV, training
-├── run_paper_experiment.py # main entry (3 datasets)
-├── results/                # JSON + fig01–fig04
-├── tests/
-└── docs/
+run_paper_experiment.py    # main experiment (NASA + Oxford + CALCE)
+model_paper.py             # hybrid architecture
+preprocess_paper.py        # ICA / DV / DC pipeline
+generate_figures.py        # fig01–fig04
+experiments/               # loaders, CV, training, metrics
+data/                      # datasets (Git LFS)
+results/                   # paper_experiment_report.json + figures
+tests/
+docs/                      # methodology, results, supervisor guide
 ```
 
-## Documentation
+---
 
-| Document | Purpose |
+## Reproducibility note
+
+**Methodology reproduced successfully** (features, model, 5-fold CV, hyperparameters). **Exact NASA RMSE 0.021 was not achieved** with this public-data pipeline; Oxford matches the published hybrid metric.
+
+For examiner review: [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md)
+
+| Document | Content |
 |:---|:---|
-| [`docs/SUPERVISOR_GUIDE.md`](docs/SUPERVISOR_GUIDE.md) | Examiner verification |
 | [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md) | Paper ↔ code |
-| [`docs/RESULTS.md`](docs/RESULTS.md) | Results table |
+| [`docs/RESULTS.md`](docs/RESULTS.md) | Metrics table |
 
-## Citation
+---
+
+## Reference & citation
+
+Rahman et al., *Scientific Reports* **16**, 9871 (2026). https://doi.org/10.1038/s41598-026-39911-8
 
 ```bibtex
 @article{rahman2026hybrid,
@@ -147,6 +112,4 @@ Details: [`docs/PAPER_METHODOLOGY.md`](docs/PAPER_METHODOLOGY.md)
 }
 ```
 
-## License
-
-MIT — see [LICENSE](LICENSE).
+MIT License — see [LICENSE](LICENSE).

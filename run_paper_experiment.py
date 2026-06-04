@@ -113,6 +113,11 @@ def run_paper_experiment(
     }
     report_path = save_json(payload, "paper_experiment_report.json")
 
+    import subprocess
+    import sys as _sys
+
+    subprocess.run([_sys.executable, "scripts/sanitize_paper_report.py"], check=False)
+
     print("\n--- Paper Experiment Summary vs published hybrid (RMSE 0.021) ---")
     for result in results:
         m = result["metrics"]

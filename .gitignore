@@ -37,7 +37,7 @@ results/*
 # Large zip downloads (raw data via Git LFS)
 data/**/*.zip
 
-# Legacy MSc root scripts if copied back locally
+# Legacy MSc / duplicate artefacts
 /model.py
 /preprocess.py
 /train.py
@@ -45,3 +45,14 @@ data/**/*.zip
 /run_nasa_real.py
 /train_paper.py
 /experiments/report.py
+results/experiment_comparison_report.json
+results/nasa_real_experiment_report.json
+results/figures/fig02_rul*
+results/figures/fig05*
+results/figures/fig06*
+results/figures/fig07*
+docs/CAPSTONE_OVERVIEW.md
+docs/THESIS_RESULTS.md
+paper_reproduction/
+models/
+scripts/run_full_pipeline.ps1
