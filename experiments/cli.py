@@ -24,6 +24,13 @@ def add_runtime_args(parser):
         action="store_true",
         help="Chronological 80/20 split (supplementary debug only).",
     )
+    parser.add_argument(
+        "--paper-runs",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Independent training runs averaged for Table 4 (default: 5 for cv5, 1 for chrono).",
+    )
     return parser
 
 

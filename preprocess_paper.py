@@ -36,6 +36,7 @@ from experiments.oxford_loader import iter_oxford_characterisation_cycles
 
 from experiments.paper_config import PAPER_SEQ_LEN, PAPER_VOLTAGE_JITTER_V, PAPER_VOLTAGE_MAX, PAPER_VOLTAGE_MIN
 
+from experiments.paper_data import prepare_paper_tensors
 from experiments.paper_preprocessing import extract_paper_cycle_tensor, sanitize_feature_tensor
 
 
@@ -146,7 +147,8 @@ def generate_paper_synthetic_data(dataset_name="NASA", num_cycles=150, seq_len=P
 
 
 
-    return np.array(data, dtype=np.float32), soh_array
+    features = np.array(data, dtype=np.float32)
+    return prepare_paper_tensors(features, soh_array)
 
 
 
@@ -172,8 +174,9 @@ class PaperDatasetLoader:
             loaded = _load_calce_paper_features(raw_path, seq_len)
 
         if loaded is not None:
-            print(f"[Paper | {dataset_name}] Loaded {len(loaded[0])} cycles (ICA+DV+DC, grid={seq_len}).")
-            return loaded
+            features, soh = prepare_paper_tensors(loaded[0], loaded[1])
+            print(f"[Paper | {dataset_name}] Loaded {len(features)} cycles (ICA+DV+DC, grid={seq_len}).")
+            return features, soh
 
         if require_real:
             raise FileNotFoundError(

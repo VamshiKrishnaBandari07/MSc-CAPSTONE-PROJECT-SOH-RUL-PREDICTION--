@@ -175,6 +175,7 @@ def build_paper_model(seq_len=300, lite=False):
     """Build paper hybrid model. Default width targets ~0.35M parameters (paper Table 4)."""
     from experiments.paper_config import (
         PAPER_CNN_CHANNELS,
+        PAPER_DROPOUT,
         PAPER_LSTM_HIDDEN,
         PAPER_LSTM_LAYERS,
         PAPER_SEQ_LEN,
@@ -190,7 +191,7 @@ def build_paper_model(seq_len=300, lite=False):
         tcn_channels=PAPER_TCN_CHANNELS,
         lstm_hidden=PAPER_LSTM_HIDDEN,
         num_lstm_layers=PAPER_LSTM_LAYERS,
-        dropout=0.2,
+        dropout=PAPER_DROPOUT,
     )
 
 

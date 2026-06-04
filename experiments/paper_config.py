@@ -19,6 +19,11 @@ PAPER_LR_SCHEDULER_PATIENCE = 5
 PAPER_GRAD_CLIP_NORM = 5.0
 PAPER_VOLTAGE_JITTER_V = 0.01  # ±10 mV augmentation on raw voltage before features
 PAPER_FEATURE_NOISE = 0.005  # training-time noise on normalised ICA/DV/DC channels
+PAPER_DROPOUT = 0.15  # paper uses dropout regularization (default module 0.2)
+
+# Table 4: mean over five independent runs (paper Methods)
+PAPER_INDEPENDENT_RUNS = 5
+PAPER_RUN_SEEDS = [42, 43, 44, 45, 46]
 
 # Evaluation (paper: stratified 5-fold CV; chronological 80/20 is supplementary)
 PAPER_CV_FOLDS = 5
