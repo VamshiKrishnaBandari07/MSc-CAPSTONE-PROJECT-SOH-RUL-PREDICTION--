@@ -130,7 +130,9 @@ def iter_calce_discharge_cycles(cell_dir):
 
 def iter_calce_all_cells(data_dir):
     for cell_dir in _list_cell_dirs(data_dir):
-        yield from iter_calce_discharge_cycles(cell_dir)
+        cell_id = os.path.basename(os.path.dirname(cell_dir)) or os.path.basename(cell_dir)
+        for item in iter_calce_discharge_cycles(cell_dir):
+            yield (*item, cell_id)
 
 
 def count_calce_cycles(data_dir):

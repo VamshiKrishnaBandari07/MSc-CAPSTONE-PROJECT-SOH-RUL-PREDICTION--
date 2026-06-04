@@ -45,6 +45,8 @@ Code: `model_paper.py` (~0.39M parameters; paper reports ~0.35M)
 ## Evaluation
 
 **Primary:** stratified **5-fold CV** on each dataset (`--cv`, default).  
+**Optional:** set `PAPER_USE_GROUP_CV = True` in `experiments/paper_config.py` for cell-holdout folds (no cycle leakage across batteries).  
+**Preprocessing:** IQR outlier removal, then **global per-channel min–max** across cells (`PAPER_USE_GLOBAL_SCALE`), plus fold-wise train scaling in the trainer.  
 **Supplementary:** chronological 80/20 (`--chrono`).
 
 ## Run

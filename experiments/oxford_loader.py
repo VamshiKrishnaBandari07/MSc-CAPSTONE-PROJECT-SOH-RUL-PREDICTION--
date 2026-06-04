@@ -77,7 +77,7 @@ def iter_oxford_characterisation_cycles(mat_path):
             else:
                 current = np.ones_like(voltage) * (NOMINAL_CAPACITY_MAH / 1000.0)
 
-            yield voltage, current, capacity_ah, soh
+            yield voltage, current, capacity_ah, soh, cell_key
 
 
 def count_oxford_cycles(data_dir):

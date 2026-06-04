@@ -23,17 +23,17 @@ def filter_cycles_iqr(
     features: np.ndarray,
     soh: np.ndarray,
     k: float = 1.5,
-) -> tuple[np.ndarray, np.ndarray, int]:
+) -> tuple[np.ndarray, np.ndarray, int, np.ndarray]:
     """
     Remove cycles with anomalous SOH or feature energy (paper IQR step).
-    Returns (features, soh, n_removed).
+    Returns (features, soh, n_removed, keep_mask).
     """
     features = np.asarray(features, dtype=np.float32)
     soh = np.asarray(soh, dtype=np.float32).flatten()
     energy = np.linalg.norm(features.reshape(len(features), -1), axis=1)
     mask = iqr_inlier_mask(soh, k=k) & iqr_inlier_mask(energy, k=k)
     removed = int(len(soh) - np.sum(mask))
-    return features[mask], soh[mask], removed
+    return features[mask], soh[mask], removed, mask
 
 
 def global_minmax_channels(features: np.ndarray) -> np.ndarray:
@@ -50,13 +50,21 @@ def global_minmax_channels(features: np.ndarray) -> np.ndarray:
     return out
 
 
-def prepare_paper_tensors(features: np.ndarray, soh: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """IQR filter; optional global scale (off by default — fold scaler in trainer)."""
+def prepare_paper_tensors(
+    features: np.ndarray,
+    soh: np.ndarray,
+    groups: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """IQR filter; optional global scale. When groups given, returns aligned groups."""
     from experiments.paper_config import PAPER_USE_GLOBAL_SCALE
 
-    features, soh, removed = filter_cycles_iqr(features, soh)
+    features, soh, removed, mask = filter_cycles_iqr(features, soh)
+    if groups is not None:
+        groups = np.asarray(groups)[mask]
     if removed:
         print(f"[Paper] IQR filter removed {removed} outlier cycles ({len(soh)} remaining).")
     if PAPER_USE_GLOBAL_SCALE:
         features = global_minmax_channels(features)
+    if groups is not None:
+        return features, soh, groups
     return features, soh

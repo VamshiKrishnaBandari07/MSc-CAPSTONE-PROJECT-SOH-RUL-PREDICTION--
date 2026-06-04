@@ -54,7 +54,8 @@ Results are **reported honestly** from completed training; metrics are not adjus
 | 5 | ±10 mV voltage jitter (train) | Preprocessing + `trainer.py` augmentation |
 | 6 | CNN → TCN → LSTM → attention | `model_paper.py` (~0.39M params) |
 | 7 | MSE, Adam 1e-3, grad clip 5, early stopping | `experiments/trainer.py` |
-| 8 | Stratified 5-fold CV | `experiments/cv.py` |
+| 8 | Stratified 5-fold CV (optional cell-grouped) | `experiments/cv.py` |
+| 8b | Global per-channel scale + IQR filter | `experiments/paper_data.py` |
 | 9 | Five independent runs (Table 4) | `PAPER_RUN_SEEDS` in `run_paper_experiment.py` |
 
 ---

@@ -13,7 +13,11 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
 from experiments.config import EARLY_STOPPING_PATIENCE, RANDOM_SEED, TRAIN_RATIO
-from experiments.cv import chronological_split, stratified_kfold_splits
+from experiments.cv import (
+    chronological_split,
+    grouped_stratified_kfold_splits,
+    stratified_kfold_splits,
+)
 from experiments.io_utils import load_checkpoint, save_checkpoint
 from experiments.metrics import monotonicity_violation_rate, regression_metrics
 from experiments.paper_preprocessing import sanitize_feature_tensor
@@ -280,6 +284,7 @@ def train_paper_experiment(
     epochs: Optional[int] = None,
     batch_size: Optional[int] = None,
     eval_protocol: str = "cv5",
+    groups: Optional[np.ndarray] = None,
 ) -> Dict[str, Any]:
     """
     Train paper reproduction model (MSE, SOH-only).
@@ -288,7 +293,7 @@ def train_paper_experiment(
       - ``cv5``: stratified 5-fold CV (primary paper metric)
       - ``chronological``: 80/20 chronological split (supplementary)
     """
-    from experiments.paper_config import PAPER_DEFAULT_EVAL
+    from experiments.paper_config import PAPER_DEFAULT_EVAL, PAPER_USE_GROUP_CV
     from model_paper import build_paper_model
 
     eval_protocol = eval_protocol or PAPER_DEFAULT_EVAL
@@ -302,8 +307,17 @@ def train_paper_experiment(
         best_fold = 1
         best_fold_result: Optional[Dict[str, Any]] = None
 
-        for fold_i, (train_idx, val_idx) in enumerate(stratified_kfold_splits(soh), start=1):
-            print(f"\n[Paper | {dataset_name}] === Stratified CV fold {fold_i}/5 ===")
+        if groups is not None and PAPER_USE_GROUP_CV and len(np.unique(groups)) >= 2:
+            split_iter = grouped_stratified_kfold_splits(soh, groups)
+            cv_label = "grouped stratified"
+        else:
+            split_iter = stratified_kfold_splits(soh)
+            cv_label = "stratified"
+        splits = list(split_iter)
+        n_splits = len(splits)
+
+        for fold_i, (train_idx, val_idx) in enumerate(splits, start=1):
+            print(f"\n[Paper | {dataset_name}] === {cv_label} CV fold {fold_i}/{n_splits} ===")
             fold_model = build_paper_model(seq_len=seq_len)
             fold_ckpt = checkpoint_path.replace(".pt", f"_fold{fold_i}.pt")
             fold_result = _train_paper_on_indices(
@@ -371,11 +385,18 @@ def train_paper_experiment(
             for fr in fold_histories
         ]
 
+        use_grouped = (
+            groups is not None
+            and PAPER_USE_GROUP_CV
+            and len(np.unique(groups)) >= 2
+        )
+        eval_name = "grouped_5fold_cv" if use_grouped else "stratified_5fold_cv"
+
         return {
             "dataset": dataset_name,
             "experiment": "paper_reproduction",
             "methodology": "scientific_reports_2026",
-            "eval_protocol": "stratified_5fold_cv",
+            "eval_protocol": eval_name,
             "best_epoch": best_fold_result["best_epoch"] if fold_metrics else 0,
             "metrics": aggregated,
             "fold_results": fold_results_json,

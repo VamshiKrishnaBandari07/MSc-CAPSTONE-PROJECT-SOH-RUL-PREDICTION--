@@ -115,7 +115,7 @@ def _run_training_loop(
     results = []
     for dataset in datasets:
         print(f"\n{'#' * 96}\n# PAPER DATASET: {dataset}\n{'#' * 96}")
-        features, soh = PaperDatasetLoader.load_dataset(
+        features, soh, groups = PaperDatasetLoader.load_dataset(
             dataset, seq_len=PAPER_SEQ_LEN, require_real=require_real
         )
         params_m = sum(p.numel() for p in build_paper_model(seq_len=PAPER_SEQ_LEN).parameters() if p.requires_grad) / 1e6
@@ -138,6 +138,7 @@ def _run_training_loop(
                     epochs=max_epochs,
                     batch_size=batch_size,
                     eval_protocol=eval_protocol,
+                    groups=groups,
                 )
             )
 
@@ -151,7 +152,13 @@ def _run_training_loop(
                 "independent_runs": len(run_results),
                 "run_seeds": run_seeds,
                 "per_run_metrics": [
-                    {"seed": s, "rmse": r["metrics"]["rmse"], "r2": r["metrics"]["r2"]}
+                    {
+                        "seed": s,
+                        "rmse": r["metrics"]["rmse"],
+                        "r2": r["metrics"].get("r2"),
+                        "mae": r["metrics"].get("mae"),
+                        "rmse_folds": r["metrics"].get("rmse_folds"),
+                    }
                     for s, r in zip(run_seeds, run_results)
                     if r.get("metrics")
                 ],
@@ -183,7 +190,12 @@ def _run_training_loop(
             "augmentation": "±10 mV voltage jitter + feature noise (train only)",
             "preprocessing": "IQR outlier removal + fold-wise train scaler (no leakage)",
             "training_stability": "min 20 epochs, non-finite recovery, clamped SOH, keep-awake on Windows",
-            "cross_validation": "stratified 5-fold" if eval_protocol == "cv5" else "chronological 80/20",
+            "cross_validation": (
+                "grouped cell-holdout + stratified folds (when groups available)"
+                if eval_protocol == "cv5"
+                else "chronological 80/20"
+            ),
+            "global_channel_scale": True,
             "independent_runs": len(run_seeds),
             "run_seeds": run_seeds,
         },

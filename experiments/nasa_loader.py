@@ -37,10 +37,11 @@ def _build_capacity_profile(data, voltage, current, cap_scalar):
     else:
         dt = np.ones(len(current))
 
-    q = np.cumsum(np.abs(current) * dt / 3600.0)
-    peak = float(np.max(q)) if len(q) else 0.0
-    if peak > 1e-9:
-        q = q / peak * cap_scalar
+    q_ah = np.cumsum(np.abs(current) * dt / 3600.0)
+    end_q = float(q_ah[-1]) if len(q_ah) else 0.0
+    if end_q > 1e-9:
+        # Anchor integrated throughput to measured discharge capacity (paper Q_k)
+        q = q_ah / end_q * cap_scalar
     else:
         q = np.linspace(0, cap_scalar, len(voltage))
     return q
@@ -83,12 +84,14 @@ def iter_nasa_discharge_cycles_from_file(mat_path):
 
 def iter_nasa_discharge_cycles(data_dir):
     """
-    Yields (voltage, current, capacity_profile, soh_scalar) for each discharge cycle
-    across all B*.mat files in data_dir.
+    Yields (voltage, current, capacity_profile, soh_scalar, cell_id) for each discharge
+    cycle across all B*.mat files in data_dir.
     """
     mat_files = sorted(glob.glob(os.path.join(data_dir, "*.mat")))
     for mat_path in mat_files:
-        yield from iter_nasa_discharge_cycles_from_file(mat_path)
+        cell_id = os.path.splitext(os.path.basename(mat_path))[0]
+        for item in iter_nasa_discharge_cycles_from_file(mat_path):
+            yield (*item, cell_id)
 
 
 def count_nasa_discharge_cycles(data_dir):

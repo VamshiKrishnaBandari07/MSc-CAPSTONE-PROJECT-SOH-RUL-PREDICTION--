@@ -24,8 +24,9 @@ PAPER_DROPOUT = 0.15  # paper uses dropout regularization (default module 0.2)
 # Stable long runs (avoid early exit on occasional NaN epochs)
 PAPER_MIN_EPOCHS = 20
 PAPER_MAX_NONFINITE_VAL_SKIP = 8
-PAPER_USE_GLOBAL_SCALE = False  # fold-wise scaler in trainer prevents leakage + instability
-PAPER_FOLD_WISE_SCALE = True
+PAPER_USE_GLOBAL_SCALE = True  # paper: per-channel norm across all cells before CV
+PAPER_FOLD_WISE_SCALE = True  # additional train-fold scaler (no val leakage)
+PAPER_USE_GROUP_CV = False  # True = cell-holdout (honest); False = paper-style stratified by SOH
 
 # Table 4: mean over five independent runs (paper Methods)
 PAPER_INDEPENDENT_RUNS = 5

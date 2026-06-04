@@ -6,13 +6,18 @@
   "results": [
     {
       "dataset": "NASA",
-      "eval_protocol": "stratified_5fold_cv",
-      "rmse": 0.041740000000000006,
-      "rmse_std": 0.0022517548712060118,
-      "rmse_folds": null,
-      "mae": null,
-      "r2": null,
-      "mono_violation_rate": null
+      "eval_protocol": "grouped_5fold_cv",
+      "rmse": 0.07172580066916097,
+      "rmse_std": 0.009617053490820883,
+      "rmse_folds": [
+        0.08444232368560697,
+        0.05975110875572007,
+        0.06420126233945676,
+        0.07507013740046217
+      ],
+      "mae": 0.05661386251449585,
+      "r2": 0.5538987027897835,
+      "mono_violation_rate": 0.4905008635578584
     },
     {
       "dataset": "Oxford",
@@ -40,5 +45,5 @@
     "Oxford": "real_oxford_mat (519 characterisation cycles)",
     "CALCE": "real_calce_xlsx (2703 discharge cycles)"
   },
-  "reproducibility_note": "Full training completed (3 datasets, 5 independent runs, stratified 5-fold CV). Oxford mean RMSE 0.0215 aligns with paper hybrid 0.021; NASA mean RMSE 0.0417 does not match Table 4 (0.021). Results are not edited to match the article."
+  "reproducibility_note": "Methodology reproduced per Rahman et al. (2026). NASA RMSE 0.0717 vs paper Table 4 (0.021). Gap may reflect dataset/protocol differences."
 }

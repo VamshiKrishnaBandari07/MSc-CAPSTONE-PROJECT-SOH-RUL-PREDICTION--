@@ -15,7 +15,12 @@ import torch
 from torch.utils.data import DataLoader
 
 from experiments.config import CHECKPOINT_DIR, RESULTS_DIR
-from experiments.cv import chronological_split, stratified_kfold_splits
+from experiments.cv import (
+    chronological_split,
+    grouped_stratified_kfold_splits,
+    stratified_kfold_splits,
+)
+from experiments.paper_config import PAPER_USE_GROUP_CV
 from experiments.io_utils import load_checkpoint
 from experiments.paper_config import PAPER_SEQ_LEN
 from experiments.runtime import get_device
@@ -42,12 +47,17 @@ def predict_cv_oof(
 ) -> Dict[str, Any]:
     """Pooled out-of-fold predictions (matches stratified 5-fold CV metrics)."""
     device = device or get_device()
-    features, soh = PaperDatasetLoader.load_dataset(dataset_name, seq_len=PAPER_SEQ_LEN)
+    features, soh, groups = PaperDatasetLoader.load_dataset(dataset_name, seq_len=PAPER_SEQ_LEN)
     features = np.asarray(features, dtype=np.float32)
     soh = np.asarray(soh, dtype=np.float32)
 
+    if groups is not None and PAPER_USE_GROUP_CV and len(np.unique(groups)) >= 2:
+        cv_splits = list(grouped_stratified_kfold_splits(soh, groups))
+    else:
+        cv_splits = list(stratified_kfold_splits(soh))
+
     report_entry = None
-    n_folds = 5
+    n_folds = len(cv_splits)
     if report_path and os.path.isfile(report_path):
         with open(report_path, encoding="utf-8") as handle:
             report = json.load(handle)
@@ -63,9 +73,7 @@ def predict_cv_oof(
     folds_used = 0
 
     model = build_paper_model(seq_len=PAPER_SEQ_LEN)
-    for fold_i, (_, val_idx) in enumerate(stratified_kfold_splits(soh), start=1):
-        if fold_i > n_folds:
-            break
+    for fold_i, (_, val_idx) in enumerate(cv_splits, start=1):
         ckpt = _checkpoint_for_fold(dataset_name, fold_i, report_entry)
         if not os.path.isfile(ckpt):
             continue
@@ -100,7 +108,7 @@ def predict_chronological_holdout(
 ) -> Dict[str, Any]:
     """Chronological 80/20 hold-out (supplementary; used when CV checkpoints missing)."""
     device = device or get_device()
-    features, soh = PaperDatasetLoader.load_dataset(dataset_name, seq_len=PAPER_SEQ_LEN)
+    features, soh, _ = PaperDatasetLoader.load_dataset(dataset_name, seq_len=PAPER_SEQ_LEN)
 
     if checkpoint_path is None:
         checkpoint_path = os.path.join(CHECKPOINT_DIR, f"paper_{dataset_name.lower()}.pt")
