@@ -1,49 +1,61 @@
 # Reproducibility Checklist
 
-Use this list for supervisor review, dissertation appendix, or GitHub reproducibility audit.
+**Paper:** Rahman et al., *Scientific Reports* (2026) — [10.1038/s41598-026-39911-8](https://doi.org/10.1038/s41598-026-39911-8)
 
 ## Environment
 
-- [ ] Python 3.9–3.11 installed
+- [ ] Python 3.9–3.11
 - [ ] `pip install -r requirements.txt` or `conda env create -f environment.yml`
-- [ ] `python scripts/verify_setup.py` passes imports
-- [ ] `git lfs pull` completed (or `python download_data.py --all`)
-
-## Determinism
-
-- [ ] Global seed **42** (`experiments/config.py` → `set_seed()`)
-- [ ] Same `torch`, `numpy`, `scipy` versions as `requirements.txt`
-- [ ] `--require-real` flag used (no synthetic fallback)
+- [ ] `python scripts/verify_setup.py`
 
 ## Data
 
-- [ ] NASA `.mat` files present (`data/NASA/`)
-- [ ] Oxford `.mat` present (`data/Oxford/`)
-- [ ] CALCE `.xlsx` present (`data/CALCE/`)
+- [ ] `git lfs pull` **or** `python download_data.py --all`
+- [ ] NASA `.mat`, Oxford `.mat`, CALCE `.xlsx` present
 
-## Paper protocol (primary)
+## Reproducibility controls
 
-- [ ] `python run_paper_experiment.py --require-real --cpu` (default **5-fold CV**)
+- [ ] Global seed **42** (`experiments/config.py`)
+- [ ] `--require-real` (no synthetic fallback for final numbers)
+- [ ] Default **5-fold stratified CV** (`--cv`)
+
+## Primary experiment
+
+```powershell
+python run_paper_experiment.py --require-real --cpu
+python scripts/sanitize_paper_report.py
+```
+
 - [ ] Output: `results/paper_experiment_report.json`
-- [ ] Oxford SOH RMSE near **0.021** (paper target; expect ± fold variance)
+- [ ] `experiment`: `paper_reproduction` (no Phase 2 fields)
 
-## Figures and docs
+## Figures and benchmarks
 
-- [ ] `python generate_figures.py` → `results/figures/fig01`–`fig04`
-- [ ] `python scripts/sync_results_docs.py` → `docs/RESULTS.md`
+```powershell
+python generate_figures.py
+python benchmark.py
+python scripts/sync_results_docs.py
+```
+
+- [ ] `fig01`–`fig04` under `results/figures/`
+- [ ] `computational_benchmark.json` has **paper_reproduction** only
 
 ## Quality gates
 
 - [ ] `python -m pytest tests/ -v`
-- [ ] Optional: `python benchmark.py` → `results/computational_benchmark.json`
 
-## One-command pipeline
+## One command
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run_paper_pipeline.ps1
 ```
 
-## Not in this repository (local only)
+## Local only (not on GitHub)
 
-- [ ] MSc joint SOH+RUL extension → `local_archive/msc_capstone_extension/`
-- [ ] Final `.docx` thesis → gitignored
+- [ ] MSc extension: `local_archive/msc_capstone_extension/`
+- [ ] Thesis `.docx` gitignored
+
+## Honest reporting
+
+- [ ] README states NASA RMSE ≠ 0.021
+- [ ] Dissertation cites methodology reproduction, not full NASA numerical match

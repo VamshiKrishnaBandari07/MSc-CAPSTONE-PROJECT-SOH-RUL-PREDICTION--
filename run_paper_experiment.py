@@ -71,7 +71,6 @@ def run_paper_experiment(
             checkpoint,
             epochs=max_epochs,
             batch_size=batch_size,
-            use_paper_protocol=True,
             eval_protocol=eval_protocol,
         )
         results.append(result)

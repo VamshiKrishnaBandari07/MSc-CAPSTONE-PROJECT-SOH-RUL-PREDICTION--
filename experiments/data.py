@@ -1,4 +1,6 @@
-"""Shared SOH/RUL label generation for fair cross-experiment comparison."""
+"""Synthetic SOH labels for fallback when raw datasets are unavailable."""
+
+from __future__ import annotations
 
 import numpy as np
 
@@ -7,16 +9,14 @@ from experiments.config import RANDOM_SEED
 DATASET_SEED_OFFSET = {"NASA": 0, "Oxford": 100, "CALCE": 200}
 
 
-def dataset_rng(dataset_name):
+def dataset_rng(dataset_name: str) -> np.random.Generator:
+    """Deterministic RNG per dataset (seed 42 + offset)."""
     offset = DATASET_SEED_OFFSET.get(dataset_name, 0)
     return np.random.default_rng(RANDOM_SEED + offset)
 
 
-def generate_shared_labels(dataset_name="NASA", num_cycles=150):
-    """
-    Produces consistent SOH and RUL trajectories per dataset.
-    Both Experiment A (paper) and Experiment B (MSc) use these labels.
-    """
+def generate_shared_labels(dataset_name: str = "NASA", num_cycles: int = 150) -> tuple:
+    """Synthetic SOH/RUL trajectories for ``require_real=False`` fallback only."""
     if dataset_name == "NASA":
         eol_threshold = 0.70
         capacity_fade_rate = 0.28
@@ -28,16 +28,8 @@ def generate_shared_labels(dataset_name="NASA", num_cycles=150):
         capacity_fade_rate = 0.25
 
     rng = dataset_rng(dataset_name)
-    soh_values = []
-
-    for cycle in range(num_cycles):
-        degrad = capacity_fade_rate * (cycle / num_cycles) ** 1.3 + 0.05 * (cycle / num_cycles)
-        recovery = 0.012 * np.sin(cycle / 5.0) if cycle % 12 == 0 else 0.0
-        soh = 1.0 - degrad + recovery
-        soh_values.append(float(np.clip(soh, 0.4, 1.0)))
-
-    soh_array = np.array(soh_values, dtype=np.float32)
-    eol_idx = next((i for i, s in enumerate(soh_array) if s <= eol_threshold), len(soh_array))
-    rul_array = np.array([max(0, eol_idx - i) for i in range(len(soh_array))], dtype=np.float32)
-
-    return soh_array, rul_array, eol_threshold
+    soh = np.clip(1.0 - capacity_fade_rate * np.linspace(0, 1, num_cycles), eol_threshold, 1.0)
+    soh += rng.normal(0, 0.01, size=num_cycles)
+    soh = np.clip(soh, 0, 1)
+    rul = np.arange(num_cycles - 1, -1, -1, dtype=np.float32)
+    return soh.astype(np.float32), rul.astype(np.float32), eol_threshold

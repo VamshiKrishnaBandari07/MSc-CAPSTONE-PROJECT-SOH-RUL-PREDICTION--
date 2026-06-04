@@ -63,4 +63,4 @@ Primary reported metrics in `results/paper_experiment_report.json` use **5-fold 
 
 ---
 
-*Author: Vamshi Krishna Bandari — MSc Capstone (paper reproduction artefact)*
+*Academic paper reproduction artefact — Vamshi Krishna Bandari*

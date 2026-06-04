@@ -59,7 +59,7 @@ Use `--chrono` only for fast debugging; not for paper claims.
 
 ## Known protocol differences
 
-1. **Evaluation split:** Experiment A uses **5-fold CV** (default); MSc extension uses chronological 80/20.
+1. **Evaluation split:** Primary metrics use **5-fold CV**; figure trajectories use chronological 80/20 hold-out.
 2. **Parameter count:** ~0.39 M vs paper ~0.35 M — minor architecture width difference.
 3. **Training stability:** Non-finite validation on some folds; best checkpoint retained per fold.
 4. **Pooled cells:** Multi-cell cycles concatenated; paper also reports per-cell figures.

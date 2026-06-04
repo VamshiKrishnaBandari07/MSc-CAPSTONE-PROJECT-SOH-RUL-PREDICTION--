@@ -152,16 +152,24 @@ def generate_all_figures(report_path=None):
     with open(report_path, encoding="utf-8") as handle:
         report = json.load(handle)
 
-    print("Collecting paper model predictions...")
-    all_preds = collect_all_predictions()
-    save_json(all_preds, "validation_predictions.json")
+    saved = [plot_rmse_comparison(report), plot_training_curves(report)]
 
-    saved = [
-        plot_soh_trajectories(all_preds),
-        plot_soh_scatter(all_preds),
-        plot_rmse_comparison(report),
-        plot_training_curves(report),
-    ]
+    ckpt_dir = os.path.join("checkpoints")
+    has_ckpt = os.path.isdir(ckpt_dir) and any(f.endswith(".pt") for f in os.listdir(ckpt_dir))
+    if has_ckpt:
+        print("Collecting paper model predictions (requires checkpoints)...")
+        all_preds = collect_all_predictions()
+        save_json(all_preds, "validation_predictions.json")
+        saved = [
+            plot_soh_trajectories(all_preds),
+            plot_soh_scatter(all_preds),
+            *saved,
+        ]
+    else:
+        print(
+            "Skipping fig01/fig02 (no checkpoints). Run run_paper_experiment.py first, "
+            "or use committed fig01/fig02 if present."
+        )
 
     print("\n" + "=" * 60)
     print("PAPER REPRODUCTION FIGURES")

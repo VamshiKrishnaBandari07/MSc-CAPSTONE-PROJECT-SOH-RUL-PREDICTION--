@@ -1,1 +1,1 @@
-"""Shared experiment utilities for MSc capstone battery SOH/RUL prediction."""
+"""Paper reproduction utilities — battery SOH prediction (Scientific Reports 2026)."""

@@ -1,6 +1,5 @@
 {
-  "experiment": "A_paper_reproduction",
-  "phase": 1,
+  "experiment": "paper_reproduction",
   "device": "cpu",
   "paper_doi": "10.1038/s41598-026-39911-8",
   "paper_target_soh_rmse": 0.021,
@@ -3333,22 +3332,13 @@
     }
   ],
   "data_sources": {
-    "NASA": {
-      "experiment_a_paper": "real_nasa_mat (636 discharge cycles)",
-      "experiment_b_msc": "real_nasa_mat (636 discharge cycles)"
-    },
-    "Oxford": {
-      "experiment_a_paper": "real_oxford_mat (519 characterisation cycles)",
-      "experiment_b_msc": "real_oxford_mat (519 characterisation cycles)"
-    },
-    "CALCE": {
-      "experiment_a_paper": "real_calce_xlsx (2703 discharge cycles)",
-      "experiment_b_msc": "real_calce_xlsx (2703 discharge cycles)"
-    }
+    "NASA": "real_nasa_mat (636 discharge cycles)",
+    "Oxford": "real_oxford_mat (519 characterisation cycles)",
+    "CALCE": "real_calce_xlsx (2703 discharge cycles)"
   },
   "experiment_config": {
     "random_seed": 42,
-    "experiment_a_paper": {
+    "paper_reproduction": {
       "features": [
         "ICA_dQdV",
         "DV_dVdQ",
@@ -3370,27 +3360,7 @@
       "eval_protocol_default": "cv5",
       "cv_folds": 5,
       "reference_doi": "10.1038/s41598-026-39911-8"
-    },
-    "experiment_b_msc": {
-      "seq_len": 100,
-      "features": [
-        "ICA",
-        "DVA",
-        "DCA"
-      ],
-      "max_epochs": 25,
-      "loss": "MSE + RUL + monotonicity"
-    },
-    "num_cycles_synthetic_default": 150,
-    "train_ratio": 0.8,
-    "paper_reported_epochs": 300,
-    "early_stopping_patience_msc": 5,
-    "msc_loss_weights": {
-      "rul_weight": 0.5,
-      "monotonicity_weight": 0.25
-    },
-    "edge_power_watts": 0.103,
-    "energy_formula": "energy_mJ = latency_ms * edge_power_watts"
+    }
   },
   "published_reference": {
     "transformer": {
@@ -3410,5 +3380,5 @@
       "targets": "SOH"
     }
   },
-  "next_step": "PHASE 2: python run_experiments.py --msc-only (or full suite)"
+  "reproducibility_note": "Methodology reproduced per Rahman et al. (2026). Oxford SOH RMSE aligns with published hybrid target; NASA RMSE did not fully match paper Table 4 (0.021)."
 }

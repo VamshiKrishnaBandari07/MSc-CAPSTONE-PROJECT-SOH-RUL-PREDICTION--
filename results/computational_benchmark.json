@@ -1,16 +1,9 @@
 {
   "device": "cpu",
   "paper_reproduction": {
-    "params_m": 0.065089,
-    "latency_ms": 4.95110433291605,
-    "energy_mj": 0.5099637462903531,
-    "macs": 3123680
-  },
-  "msc_proposed": {
-    "params_m": 0.067202,
-    "latency_ms": 4.98428166625672,
-    "energy_mj": 0.5133810116244422,
-    "macs": 3125760
+    "params_m": 0.385217,
+    "latency_ms": 9.486175666485602,
+    "energy_mj": 0.977076093648017
   },
   "published_baseline": {
     "transformer": {

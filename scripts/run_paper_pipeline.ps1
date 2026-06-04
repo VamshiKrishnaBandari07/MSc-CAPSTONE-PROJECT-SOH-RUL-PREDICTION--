@@ -8,7 +8,9 @@ git lfs pull 2>$null
 python run_paper_experiment.py --require-real --cpu
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+python scripts/sanitize_paper_report.py
 python generate_figures.py
+python benchmark.py
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 python scripts/sync_results_docs.py

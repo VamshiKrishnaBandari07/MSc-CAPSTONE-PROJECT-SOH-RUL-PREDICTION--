@@ -5,11 +5,9 @@ __pycache__/
 .DS_Store
 .idea/
 .vscode/
-*.log
-checkpoints/
 .pytest_cache/
 
-# Local-only (MSc extension, thesis, rewrite temp)
+# Local-only (never commit)
 local_archive/
 .git-rewrite/
 *.docx
@@ -17,22 +15,32 @@ local_archive/
 MSc_Report*
 docs/MSc_REPORT*
 
-# Results: keep committed JSON + figures; ignore ephemeral runs
-results/*
-!results/*.json
-!results/figures/
-!results/figures/**
+# Training artefacts
+checkpoints/
+
+# Ephemeral results
 results/validation_predictions.json
+results/*.log
 results/full_pipeline.log
 results/experiment_run.log
 
-# Large downloads (use Git LFS for committed raw data)
+# Keep committed metrics + paper figures
+results/*
+!results/*.json
+!results/figures/
+!results/figures/fig01_soh_trajectories.*
+!results/figures/fig02_soh_scatter.*
+!results/figures/fig03_soh_rmse_comparison.*
+!results/figures/fig04_training_convergence.*
+
+# Large zip downloads (raw data via Git LFS)
 data/**/*.zip
 
-# Legacy MSc scripts at repo root (if copied back locally)
+# Legacy MSc root scripts if copied back locally
 /model.py
 /preprocess.py
 /train.py
 /run_experiments.py
 /run_nasa_real.py
 /train_paper.py
+/experiments/report.py

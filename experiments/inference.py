@@ -1,6 +1,13 @@
-"""Load saved paper checkpoints and produce validation predictions for figures."""
+"""Load paper checkpoints and produce validation predictions for figures.
+
+Note: Figures use a single chronological 80/20 hold-out for visualization.
+Reported RMSE in ``paper_experiment_report.json`` uses stratified 5-fold CV.
+"""
+
+from __future__ import annotations
 
 import os
+from typing import Any, Dict, Iterable, Tuple
 
 import numpy as np
 import torch
@@ -14,7 +21,12 @@ from model_paper import build_paper_model
 from preprocess_paper import PaperDatasetLoader
 
 
-def predict_paper_validation(dataset_name, checkpoint_path=None, device=None):
+def predict_paper_validation(
+    dataset_name: str,
+    checkpoint_path: str | None = None,
+    device: torch.device | None = None,
+) -> Dict[str, Any]:
+    """Run inference on the chronological validation split (figure generation)."""
     device = device or get_device()
     features, soh = PaperDatasetLoader.load_dataset(dataset_name, seq_len=PAPER_SEQ_LEN)
 
@@ -44,6 +56,7 @@ def predict_paper_validation(dataset_name, checkpoint_path=None, device=None):
     return {
         "dataset": dataset_name,
         "split_idx": int(split_idx),
+        "eval_note": "chronological_80_20_holdout_for_figures_only",
         "cycles": cycles.tolist(),
         "soh_true": y_true.tolist(),
         "soh_pred": y_pred.tolist(),
@@ -51,5 +64,8 @@ def predict_paper_validation(dataset_name, checkpoint_path=None, device=None):
     }
 
 
-def collect_all_predictions(datasets=("NASA", "Oxford", "CALCE")):
+def collect_all_predictions(
+    datasets: Iterable[str] = ("NASA", "Oxford", "CALCE"),
+) -> Dict[str, Dict[str, Any]]:
+    """Collect validation predictions for all datasets."""
     return {name: predict_paper_validation(name) for name in datasets}
