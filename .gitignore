@@ -9,11 +9,20 @@ __pycache__/
 
 # Local-only (never commit)
 local_archive/
+presentations/
+*.pptx
+~$*.pptx
+Bandari_Capstone_Progress_*.pptx
+Bandari_Capstone_Progress_*_Professional.pptx
+Bandari_Capstone_Progress_*.pdf
+Bandari_Project_Proposal_*.docx
+Bandari_Project_Proposal_*.pdf
 .git-rewrite/
 *.docx
 ~$*.docx
 MSc_Report*
 docs/MSc_REPORT*
+docs/Bandari_MSc_Project_Report_Final_PREVIEW.txt
 
 # Training artefacts
 checkpoints/
